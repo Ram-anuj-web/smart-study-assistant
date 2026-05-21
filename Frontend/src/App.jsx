@@ -8,13 +8,17 @@ import Flashcards from './components/Flashcards'
 const TABS = [
   { id: 'summary', label: 'Summary', icon: '📝' },
   { id: 'flashcards', label: 'Flashcards', icon: '🃏' },
-  { id: 'raw', label: 'Raw JSON', icon: '🔧' },
+  { id: 'quiz', label: 'Quiz', icon: '🧠' },
 ]
 
 function App() {
   const [activeTab, setActiveTab] = useState('summary')
-  const [currentResult, setCurrentResult] = useState(null)
+  const [results, setResults] = useState({})
   const [loading, setLoading] = useState(false)
+
+  function handleGenerate(data) {
+    setResults((prev) => ({ ...prev, [activeTab]: data }))
+  }
 
   return (
     <div className="app">
@@ -24,9 +28,9 @@ function App() {
 
       <main className="main">
         <NoteInput
-          onGenerate={setCurrentResult}
+          onGenerate={handleGenerate}
           loading={loading}
-           setLoading={setLoading}
+          setLoading={setLoading}
           activeTab={activeTab}
         />
 
@@ -43,7 +47,13 @@ function App() {
         </div>
 
         <div className="result-area">
-          {!currentResult ? (
+          {activeTab === 'summary' && results.summary ? (
+            <Summary data={results.summary} />
+          ) : activeTab === 'flashcards' && results.flashcards ? (
+            <Flashcards data={results.flashcards} />
+          ) : activeTab === 'quiz' && results.quiz ? (
+            <Quiz data={results.quiz} />
+          ) : (
             <div className="empty-state">
               <div className="empty-icon">
                 {TABS.find((t) => t.id === activeTab)?.icon}
@@ -51,13 +61,7 @@ function App() {
               <h3>No {activeTab} yet</h3>
               <p>Paste your notes and hit Generate</p>
             </div>
-          ) : activeTab === 'summary' ? (
-            <Summary data={currentResult} />
-          ) : activeTab === 'flashcards' ? (
-            <Flashcards data={currentResult} />
-          ) : (
-  <Quiz data={currentResult} />
-)}
+          )}
         </div>
       </main>
     </div>
