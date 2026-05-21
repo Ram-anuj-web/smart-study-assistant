@@ -8,7 +8,9 @@ const app = express();
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // ─── Middleware ───────────────────────────────────────────────
-app.use(cors());
+app.use(cors({
+  origin: "https://smart-study-assistant-sepia.vercel.app"
+}));
 app.use(express.json({ limit: "50kb" }));
 
 const limiter = rateLimit({
