@@ -26,6 +26,7 @@ function App() {
         <NoteInput
           onGenerate={setCurrentResult}
           loading={loading}
+           setLoading={setLoading}
           activeTab={activeTab}
         />
 

@@ -1,6 +1,8 @@
 import { useState } from "react";
 const MAX = 3000;
 
+const API_URL = "https://smart-study-backend.onrender.com"; // 👈 your Render URL
+
 const PLACEHOLDERS = {
   summary: "Paste your notes here...\n\nE.g. lecture notes, textbook paragraphs, any study material.",
   flashcards: "Paste your notes here...\n\nWe'll turn every key concept into a flashcard.",
@@ -13,18 +15,30 @@ const BTN_LABELS = {
   quiz: "Generate Quiz",
 };
 
-export default function NoteInput({ onGenerate, loading, activeTab }) {
+export default function NoteInput({ onGenerate, loading, setLoading, activeTab }) {
   const [notes, setNotes] = useState("");
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (notes.trim().length < 20) return;
-    onGenerate(notes);
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/${activeTab}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes }),
+      });
+      const data = await res.json();
+      onGenerate(data);
+    } catch (err) {
+      console.error("API error:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div className="note-input-wrap">
       <label>Your Notes</label>
-
       <div className="textarea-wrap">
         <textarea
           value={notes}
@@ -36,16 +50,13 @@ export default function NoteInput({ onGenerate, loading, activeTab }) {
           {notes.length}/{MAX}
         </span>
       </div>
-
       <button
         className="generate-btn"
         onClick={handleSubmit}
         disabled={loading || notes.trim().length < 20}
       >
         {loading ? (
-          <>
-            <div className="spinner" /> Generating...
-          </>
+          <><div className="spinner" /> Generating...</>
         ) : (
           <>{BTN_LABELS[activeTab]}</>
         )}
