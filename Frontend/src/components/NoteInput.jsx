@@ -1,7 +1,7 @@
 import { useState } from "react";
 const MAX = 3000;
 
-const API_URL = "https://smart-study-backend.onrender.com";
+const API_URL = "https://smart-study-assistant-vjt5.onrender.com";
 
 const PLACEHOLDERS = {
   summary: "Paste your notes here...\n\nE.g. lecture notes, textbook paragraphs, any study material.",
