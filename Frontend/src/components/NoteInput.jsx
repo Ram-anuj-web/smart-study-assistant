@@ -1,7 +1,7 @@
 import { useState } from "react";
 const MAX = 3000;
 
-const API_URL = "https://smart-study-backend.onrender.com"; // 👈 your Render URL
+const API_URL = "https://smart-study-backend.onrender.com";
 
 const PLACEHOLDERS = {
   summary: "Paste your notes here...\n\nE.g. lecture notes, textbook paragraphs, any study material.",
@@ -15,6 +15,12 @@ const BTN_LABELS = {
   quiz: "Generate Quiz",
 };
 
+const ENDPOINTS = {
+  summary: "summarize",
+  flashcards: "flashcards",
+  quiz: "quiz",
+};
+
 export default function NoteInput({ onGenerate, loading, setLoading, activeTab }) {
   const [notes, setNotes] = useState("");
 
@@ -22,7 +28,7 @@ export default function NoteInput({ onGenerate, loading, setLoading, activeTab }
     if (notes.trim().length < 20) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/${activeTab}`, {
+      const res = await fetch(`${API_URL}/api/${ENDPOINTS[activeTab]}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes }),
