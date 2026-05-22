@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap');
 
+/* ── Dark Theme (default) ── */
 :root {
   --accent: #a78bfa;
   --accent2: #34d399;
@@ -20,6 +21,32 @@
   --radius: 14px;
   --radius-sm: 8px;
   --radius-lg: 20px;
+  --header-bg: rgba(8,8,16,0.85);
+  --body-gradient-1: rgba(167,139,250,0.08);
+  --body-gradient-2: rgba(52,211,153,0.04);
+}
+
+/* ── Light Theme ── */
+[data-theme="light"] {
+  --accent: #7c3aed;
+  --accent2: #059669;
+  --accent3: #ea580c;
+  --accent-glow: rgba(124, 58, 237, 0.12);
+  --bg: #f0ecff;
+  --bg2: #e8e2ff;
+  --surface: #ffffff;
+  --surface2: #f5f2ff;
+  --surface3: #ede8ff;
+  --border: rgba(100, 60, 180, 0.12);
+  --border-hover: rgba(124, 58, 237, 0.4);
+  --text: #2d1b6b;
+  --text-muted: #8b7ab8;
+  --text-h: #1a0a4a;
+  --danger: #dc2626;
+  --success: #059669;
+  --header-bg: rgba(240, 236, 255, 0.9);
+  --body-gradient-1: rgba(124,58,237,0.06);
+  --body-gradient-2: rgba(5,150,105,0.03);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -30,8 +57,9 @@ body {
   font-family: 'Instrument Sans', sans-serif;
   min-height: 100vh;
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(167,139,250,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 80% 80%, rgba(52,211,153,0.04) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 50% at 50% -20%, var(--body-gradient-1) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 80% 80%, var(--body-gradient-2) 0%, transparent 50%);
+  transition: background 0.3s, color 0.3s;
 }
 
 button { cursor: pointer; border: none; background: none; font-family: inherit; }
@@ -50,10 +78,11 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   align-items: center;
   justify-content: space-between;
   backdrop-filter: blur(12px);
-  background: rgba(8,8,16,0.8);
+  background: var(--header-bg);
   position: sticky;
   top: 0;
   z-index: 10;
+  transition: background 0.3s, border-color 0.3s;
 }
 
 .logo-text {
@@ -116,7 +145,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .tab-btn.active {
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 0 20px rgba(167,139,250,0.3);
+  box-shadow: 0 0 20px var(--accent-glow);
 }
 
 /* ── Result Area ── */
@@ -226,14 +255,14 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   gap: 0.5rem;
   transition: all 0.2s;
   align-self: flex-end;
-  box-shadow: 0 4px 20px rgba(167,139,250,0.25);
+  box-shadow: 0 4px 20px var(--accent-glow);
   letter-spacing: 0.01em;
 }
 
 .generate-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 .generate-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 28px rgba(167,139,250,0.4);
+  box-shadow: 0 6px 28px var(--accent-glow);
 }
 .generate-btn:active:not(:disabled) { transform: translateY(0); }
 
@@ -383,7 +412,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .dot.active {
   background: var(--accent);
   transform: scale(1.4);
-  box-shadow: 0 0 8px rgba(167,139,250,0.5);
+  box-shadow: 0 0 8px var(--accent-glow);
   border-color: transparent;
 }
 
@@ -426,13 +455,13 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   transition: box-shadow 0.2s;
 }
 
-.card-face:hover { box-shadow: 0 8px 32px rgba(167,139,250,0.12); }
+.card-face:hover { box-shadow: 0 8px 32px var(--accent-glow); }
 
 .card-front { background: var(--surface); }
 
 .card-back {
   background: var(--surface2);
-  border-color: rgba(167,139,250,0.3);
+  border-color: var(--border-hover);
   transform: rotateY(180deg);
 }
 
@@ -609,7 +638,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 
 .option.selected {
   border-color: var(--accent);
-  background: rgba(167,139,250,0.12);
+  background: var(--accent-glow);
 }
 
 .option.correct-opt {
@@ -666,53 +695,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   animation: fadeUp 0.3s ease;
 }
 
-/* ── Animations ── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-/* ── Light Theme ── */
-[data-theme="light"] {
-  --accent: #7c3aed;
-  --accent2: #059669;
-  --accent3: #ea580c;
-  --accent-glow: rgba(124, 58, 237, 0.12);
-  --bg: #ede9fe;
-  --bg2: #e5e0fc;
-  --surface: #ffffff;
-  --surface2: #f5f3ff;
-  --surface3: #ede9fe;
-  --border: rgba(0, 0, 0, 0.1);
-  --border-hover: rgba(124, 58, 237, 0.35);
-  --text: #1f1235;
-  --text-muted: #7c6fa0;
-  --text-h: #0d0820;
-  --danger: #dc2626;
-  --success: #059669;
-}
-
-[data-theme="light"] body {
-  background-image:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124,58,237,0.07) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 80% 80%, rgba(5,150,105,0.04) 0%, transparent 50%);
-}
-
-[data-theme="light"] .header {
-  background: rgba(255, 255, 255, 0.85);
-  border-bottom-color: rgba(0, 0, 0, 0.07);
-}
-
-[data-theme="light"] .tab-btn.active {
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);
-}
-
-/* ── Theme Toggle Button ── */
+/* ── Theme Toggle ── */
 .theme-toggle {
   width: 36px;
   height: 36px;
@@ -730,6 +713,17 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 
 .theme-toggle:hover {
   border-color: var(--accent);
-  color: var(--accent);
   background: var(--accent-glow);
 }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
