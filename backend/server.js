@@ -114,6 +114,38 @@ Rules:
     res.status(500).json({ error: "Failed to generate quiz. Try again." });
   }
 });
+// ─── Route: /api/topic ────────────────────────────────────────
+app.post("/api/topic", async (req, res) => {
+  const { topic } = req.body;
+  if (!topic || topic.trim().length < 3) {
+    return res.status(400).json({ error: "Topic too short." });
+  }
+
+  const systemPrompt = `You are a study assistant. Given a topic, generate study material.
+Rules:
+- Write a clear educational paragraph (4-6 sentences) explaining the topic
+- Summarize it in 4-6 bullet points
+- Create exactly 5 multiple-choice quiz questions (A/B/C/D, one correct answer, short explanation)
+- Create 6 flashcards (question front, answer back)
+- Format: return ONLY a JSON object like this:
+{
+  "paragraph": "...",
+  "summary": { "title": "...", "bullets": ["...", ...] },
+  "quiz": { "questions": [ { "question": "...", "options": { "A": "...", "B": "...", "C": "...", "D": "..." }, "answer": "A", "explanation": "..." }, ... ] },
+  "flashcards": { "cards": [ { "front": "...", "back": "..." }, ... ] }
+}
+- Return ONLY valid JSON. No extra text, no markdown, no backticks.`;
+
+  try {
+    const raw = await callGroq(systemPrompt, `Topic: ${topic}`);
+    const clean = raw.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(clean);
+    res.json(parsed);
+  } catch (err) {
+    console.error("Topic error:", err.message);
+    res.status(500).json({ error: "Failed to generate topic content. Try again." });
+  }
+});
 
 // ─── Health check ─────────────────────────────────────────────
 app.get("/", (req, res) => res.json({ status: "Smart Study API running ✅" }));
