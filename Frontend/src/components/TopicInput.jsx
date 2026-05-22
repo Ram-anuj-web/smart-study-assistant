@@ -7,7 +7,7 @@ export default function TopicInput({ onGenerate, loading, setLoading }) {
     if (!topic.trim() || loading) return
     setLoading(true)
     try {
-      const res = await fetch('https://smart-study-assistant-vjt5.onrender.com/topic', {
+      const res = await fetch('https://smart-study-assistant-vjt5.onrender.com/api/topic', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic: topic.trim() }),
