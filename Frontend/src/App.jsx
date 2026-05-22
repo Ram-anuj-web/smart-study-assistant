@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import './App.css'
 import NoteInput from './components/NoteInput'
@@ -20,28 +19,6 @@ const TOPIC_TABS = [
   { id: 'flashcards', label: 'Flashcards', icon: '🃏' },
   { id: 'quiz',       label: 'Quiz',       icon: '🧠' },
 ]
-// Add at the top of your App() function:
-const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
-
-useEffect(() => {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('theme', theme);
-}, [theme]);
-
-// Update your header JSX:
-<header className="header">
-  <span className="logo-text">AI Smart Assistant</span>
-  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-    <button
-      className="theme-toggle"
-      onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-      title="Toggle theme"
-    >
-      {theme === 'dark' ? '☀️' : '🌙'}
-    </button>
-    <span className="header-badge">v2.0</span>
-  </div>
-</header>
 
 export default function App() {
   const [mode, setMode]                     = useState('notes')
@@ -50,10 +27,17 @@ export default function App() {
   const [noteResults, setNoteResults]       = useState({})
   const [topicResults, setTopicResults]     = useState(null)
   const [loading, setLoading]               = useState(false)
+  const [theme, setTheme]                   = useState(() => localStorage.getItem('theme') || 'dark')
 
-function handleNoteGenerate(data) {
-  setNoteResults(data);
-}
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  function handleNoteGenerate(data) {
+    setNoteResults(data)
+  }
+
   function handleTopicGenerate(data) {
     setTopicResults(data)
     setActiveTopicTab('paragraph')
@@ -63,7 +47,16 @@ function handleNoteGenerate(data) {
     <div className="app">
       <header className="header">
         <span className="logo-text">AI Smart Assistant</span>
-        <span className="header-badge">v2.0</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            className="theme-toggle"
+            onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+            title="Toggle theme"
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+          <span className="header-badge">v2.0</span>
+        </div>
       </header>
 
       <main className="main">
