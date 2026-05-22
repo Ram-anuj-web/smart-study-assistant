@@ -1,6 +1,6 @@
 require("dotenv").config();
 const multer = require("multer");
-const pdf = require("pdf-parse");
+const pdfParse = require("pdf-parse");
 const express = require("express");
 const cors = require("cors");
 const Groq = require("groq-sdk");
@@ -139,7 +139,7 @@ Only JSON.
 
     const clean = raw.replace(/```json|```/g, "").trim();
 
-    const parsed = JSON.parse(clean);
+   const parsed = await pdfParse(req.file.buffer);
 
     res.json(parsed);
 
