@@ -28,10 +28,9 @@ export default function App() {
   const [topicResults, setTopicResults]     = useState(null)
   const [loading, setLoading]               = useState(false)
 
-  function handleNoteGenerate(data) {
-    setNoteResults((prev) => ({ ...prev, [activeNoteTab]: data }))
-  }
-
+function handleNoteGenerate(data) {
+  setNoteResults(data);
+}
   function handleTopicGenerate(data) {
     setTopicResults(data)
     setActiveTopicTab('paragraph')

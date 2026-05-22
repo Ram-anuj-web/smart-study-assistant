@@ -5,151 +5,255 @@ const Groq = require("groq-sdk");
 const rateLimit = require("express-rate-limit");
 
 const app = express();
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// ─── Middleware ───────────────────────────────────────────────
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
+
+// ─────────────────────────────────────────────
+// Middleware
+// ─────────────────────────────────────────────
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST"],
-  allowedHeaders: ["Content-Type"]
+  allowedHeaders: ["Content-Type"],
 }));
+
 app.use(express.json({ limit: "50kb" }));
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
-  message: { error: "Too many requests. Please wait a moment." },
+  message: {
+    error: "Too many requests. Please wait a moment.",
+  },
 });
+
 app.use("/api/", limiter);
 
-// ─── Helper: call Groq ────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Helper Function
+// ─────────────────────────────────────────────
 async function callGroq(systemPrompt, userContent) {
   const response = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
-    max_tokens: 1500,
+    max_tokens: 2000,
     messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userContent },
+      {
+        role: "system",
+        content: systemPrompt,
+      },
+      {
+        role: "user",
+        content: userContent,
+      },
     ],
   });
+
   return response.choices[0].message.content;
 }
 
-// ─── Route: /api/summarize ────────────────────────────────────
-app.post("/api/summarize", async (req, res) => {
+// ─────────────────────────────────────────────
+// Generate ALL from Notes
+// ─────────────────────────────────────────────
+app.post("/api/notes-all", async (req, res) => {
   const { notes } = req.body;
+
   if (!notes || notes.trim().length < 20) {
-    return res.status(400).json({ error: "Notes too short to summarize." });
+    return res.status(400).json({
+      error: "Notes too short.",
+    });
   }
 
-  const systemPrompt = `You are a study assistant. Summarize the student's notes into clear, concise bullet points.
-Rules:
-- Extract only the key concepts, definitions, and facts
-- Use simple language a student can quickly review
-- Format: return a JSON object like this:
-  { "title": "Topic title inferred from notes", "bullets": ["point 1", "point 2", ...] }
-- Return ONLY valid JSON. No extra text, no markdown, no backticks.`;
+  const systemPrompt = `
+You are a study assistant.
+
+Generate:
+
+1. Summary
+2. Flashcards
+3. Quiz
+
+RULES:
+
+- Summary must contain:
+  {
+    "title": "...",
+    "bullets": ["...", "..."]
+  }
+
+- Flashcards must contain:
+  {
+    "cards": [
+      {
+        "front": "...",
+        "back": "..."
+      }
+    ]
+  }
+
+- Quiz must contain:
+  {
+    "questions": [
+      {
+        "question": "...",
+        "options": {
+          "A": "...",
+          "B": "...",
+          "C": "...",
+          "D": "..."
+        },
+        "answer": "A",
+        "explanation": "..."
+      }
+    ]
+  }
+
+Return ONLY valid JSON in this format:
+
+{
+  "summary": {
+    "title": "...",
+    "bullets": []
+  },
+  "flashcards": {
+    "cards": []
+  },
+  "quiz": {
+    "questions": []
+  }
+}
+
+No markdown.
+No backticks.
+Only JSON.
+`;
 
   try {
     const raw = await callGroq(systemPrompt, notes);
+
     const clean = raw.replace(/```json|```/g, "").trim();
+
     const parsed = JSON.parse(clean);
+
     res.json(parsed);
+
   } catch (err) {
-    console.error("Summarize error:", err.message);
-    res.status(500).json({ error: "Failed to generate summary. Try again." });
+    console.error("Notes-all error:", err.message);
+
+    res.status(500).json({
+      error: "Failed to generate study materials.",
+    });
   }
 });
 
-// ─── Route: /api/flashcards ───────────────────────────────────
-app.post("/api/flashcards", async (req, res) => {
-  const { notes } = req.body;
-  if (!notes || notes.trim().length < 20) {
-    return res.status(400).json({ error: "Notes too short to generate flashcards." });
-  }
-
-  const systemPrompt = `You are a study assistant. Generate flashcards from the student's notes.
-Rules:
-- Each flashcard has a question on the front and a concise answer on the back
-- Generate between 5 and 10 flashcards depending on note length
-- Cover all major concepts
-- Format: return a JSON object like this:
-  { "cards": [ { "front": "Question?", "back": "Answer" }, ... ] }
-- Return ONLY valid JSON. No extra text, no markdown, no backticks.`;
-
-  try {
-    const raw = await callGroq(systemPrompt, notes);
-    const clean = raw.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(clean);
-    res.json(parsed);
-  } catch (err) {
-    console.error("Flashcards error:", err.message);
-    res.status(500).json({ error: "Failed to generate flashcards. Try again." });
-  }
-});
-
-// ─── Route: /api/quiz ─────────────────────────────────────────
-app.post("/api/quiz", async (req, res) => {
-  const { notes } = req.body;
-  if (!notes || notes.trim().length < 20) {
-    return res.status(400).json({ error: "Notes too short to generate a quiz." });
-  }
-
-  const systemPrompt = `You are a study assistant. Generate a multiple-choice quiz from the student's notes.
-Rules:
-- Generate exactly 5 questions
-- Each question has 4 options labeled A, B, C, D
-- One correct answer per question
-- Include a short explanation for the correct answer
-- Format: return a JSON object like this:
-  { "questions": [ { "question": "...", "options": { "A": "...", "B": "...", "C": "...", "D": "..." }, "answer": "A", "explanation": "..." }, ... ] }
-- Return ONLY valid JSON. No extra text, no markdown, no backticks.`;
-
-  try {
-    const raw = await callGroq(systemPrompt, notes);
-    const clean = raw.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(clean);
-    res.json(parsed);
-  } catch (err) {
-    console.error("Quiz error:", err.message);
-    res.status(500).json({ error: "Failed to generate quiz. Try again." });
-  }
-});
-// ─── Route: /api/topic ────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Generate ALL from Topic
+// ─────────────────────────────────────────────
 app.post("/api/topic", async (req, res) => {
   const { topic } = req.body;
+
   if (!topic || topic.trim().length < 3) {
-    return res.status(400).json({ error: "Topic too short." });
+    return res.status(400).json({
+      error: "Topic too short.",
+    });
   }
 
-  const systemPrompt = `You are a study assistant. Given a topic, generate study material.
-Rules:
-- Write a clear educational paragraph (4-6 sentences) explaining the topic
-- Summarize it in 4-6 bullet points
-- Create exactly 5 multiple-choice quiz questions (A/B/C/D, one correct answer, short explanation)
-- Create 6 flashcards (question front, answer back)
-- Format: return ONLY a JSON object like this:
+  const systemPrompt = `
+You are a study assistant.
+
+Given a topic:
+
+1. Write an educational paragraph
+2. Create a summary
+3. Create flashcards
+4. Create a quiz
+
+RULES:
+
+- Paragraph: 4-6 clear sentences
+
+- Summary:
+{
+  "title": "...",
+  "bullets": ["...", "..."]
+}
+
+- Flashcards:
+{
+  "cards": [
+    {
+      "front": "...",
+      "back": "..."
+    }
+  ]
+}
+
+- Quiz:
+{
+  "questions": [
+    {
+      "question": "...",
+      "options": {
+        "A": "...",
+        "B": "...",
+        "C": "...",
+        "D": "..."
+      },
+      "answer": "A",
+      "explanation": "..."
+    }
+  ]
+}
+
+Return ONLY JSON in this format:
+
 {
   "paragraph": "...",
-  "summary": { "title": "...", "bullets": ["...", ...] },
-  "quiz": { "questions": [ { "question": "...", "options": { "A": "...", "B": "...", "C": "...", "D": "..." }, "answer": "A", "explanation": "..." }, ... ] },
-  "flashcards": { "cards": [ { "front": "...", "back": "..." }, ... ] }
+  "summary": {},
+  "flashcards": {},
+  "quiz": {}
 }
-- Return ONLY valid JSON. No extra text, no markdown, no backticks.`;
+
+No markdown.
+Only JSON.
+`;
 
   try {
-    const raw = await callGroq(systemPrompt, `Topic: ${topic}`);
+    const raw = await callGroq(
+      systemPrompt,
+      `Topic: ${topic}`
+    );
+
     const clean = raw.replace(/```json|```/g, "").trim();
+
     const parsed = JSON.parse(clean);
+
     res.json(parsed);
+
   } catch (err) {
     console.error("Topic error:", err.message);
-    res.status(500).json({ error: "Failed to generate topic content. Try again." });
+
+    res.status(500).json({
+      error: "Failed to generate topic content.",
+    });
   }
 });
 
-// ─── Health check ─────────────────────────────────────────────
-app.get("/", (req, res) => res.json({ status: "Smart Study API running ✅" }));
+// ─────────────────────────────────────────────
+// Health Check
+// ─────────────────────────────────────────────
+app.get("/", (req, res) => {
+  res.json({
+    status: "Smart Study API running ✅",
+  });
+});
 
-// ─── Start server ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Start Server
+// ─────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
