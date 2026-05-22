@@ -78,44 +78,56 @@ export default function App() {
         </div>
 
         {/* NOTES MODE */}
-        {mode === 'notes' && (
-          <>
-            <NoteInput
-              onGenerate={handleNoteGenerate}
-              loading={loading}
-              setLoading={setLoading}
-              activeTab={activeNoteTab}
-            />
-            <div className="tabs">
-              {NOTE_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  className={`tab-btn ${activeNoteTab === tab.id ? 'active' : ''}`}
-                  onClick={() => setActiveNoteTab(tab.id)}
-                >
-                  {tab.icon} {tab.label}
-                </button>
-              ))}
+{mode === 'notes' && (
+  <>
+    <NoteInput
+      onGenerate={handleNoteGenerate}
+      loading={loading}
+      setLoading={setLoading}
+      activeTab={activeNoteTab}
+    />
+    {/* Wrap tabs inside a surface card so they connect visually */}
+    <div style={{
+      background: 'var(--surface)',
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius-lg)',
+      padding: '1rem 1.5rem',
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1rem'
+    }}>
+      <div className="tabs">
+        {NOTE_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            className={`tab-btn ${activeNoteTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveNoteTab(tab.id)}
+          >
+            {tab.icon} {tab.label}
+          </button>
+        ))}
+      </div>
+      <div className="result-area">
+        {activeNoteTab === 'summary' && noteResults.summary ? (
+          <Summary data={noteResults.summary} />
+        ) : activeNoteTab === 'flashcards' && noteResults.flashcards ? (
+          <Flashcards data={noteResults.flashcards} />
+        ) : activeNoteTab === 'quiz' && noteResults.quiz ? (
+          <Quiz data={noteResults.quiz} />
+        ) : (
+          <div className="empty-state">
+            <div className="empty-icon">
+              {NOTE_TABS.find((t) => t.id === activeNoteTab)?.icon}
             </div>
-            <div className="result-area">
-              {activeNoteTab === 'summary' && noteResults.summary ? (
-                <Summary data={noteResults.summary} />
-              ) : activeNoteTab === 'flashcards' && noteResults.flashcards ? (
-                <Flashcards data={noteResults.flashcards} />
-              ) : activeNoteTab === 'quiz' && noteResults.quiz ? (
-                <Quiz data={noteResults.quiz} />
-              ) : (
-                <div className="empty-state">
-                  <div className="empty-icon">
-                    {NOTE_TABS.find((t) => t.id === activeNoteTab)?.icon}
-                  </div>
-                  <h3>No {activeNoteTab} yet</h3>
-                  <p>Paste your notes and hit Generate</p>
-                </div>
-              )}
-            </div>
-          </>
+            <h3>No {activeNoteTab} yet</h3>
+            <p>Paste your notes and hit Generate</p>
+          </div>
         )}
+      </div>
+    </div>
+  </>
+)}
 
         {/* TOPIC MODE */}
         {mode === 'topic' && (

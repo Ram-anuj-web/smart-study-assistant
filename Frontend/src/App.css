@@ -331,6 +331,11 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   background: var(--accent-glow);
   border-color: var(--accent);
 }
+.file-btn.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent);
+}
 
 .file-name {
   font-size: 0.8rem;
