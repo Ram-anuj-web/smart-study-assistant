@@ -1,10 +1,15 @@
 require("dotenv").config();
+const multer = require("multer");
+const pdf = require("pdf-parse");
 const express = require("express");
 const cors = require("cors");
 const Groq = require("groq-sdk");
 const rateLimit = require("express-rate-limit");
 
 const app = express();
+const upload = multer({
+  storage: multer.memoryStorage(),
+});
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -19,7 +24,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type"],
 }));
 
-app.use(express.json({ limit: "50kb" }));
+app.use(express.json({ limit: "10mb" }));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -37,7 +42,7 @@ app.use("/api/", limiter);
 async function callGroq(systemPrompt, userContent) {
   const response = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
-    max_tokens: 2000,
+    max_tokens: 4000,
     messages: [
       {
         role: "system",
@@ -146,6 +151,97 @@ Only JSON.
     });
   }
 });
+// ─────────────────────────────────────────────
+// PDF Upload Route
+// ─────────────────────────────────────────────
+app.post(
+  "/api/pdf-summary",
+  upload.single("pdf"),
+  async (req, res) => {
+
+    try {
+
+      if (!req.file) {
+        return res.status(400).json({
+          error: "No PDF uploaded.",
+        });
+      }
+
+      // Extract text from PDF
+      const data = await pdf(req.file.buffer);
+
+      const pdfText = data.text;
+
+      if (!pdfText || pdfText.trim().length < 20) {
+        return res.status(400).json({
+          error: "PDF contains insufficient text.",
+        });
+      }
+
+      // AI Prompt
+      const systemPrompt = `
+You are a study assistant.
+
+Summarize the PDF into concise study notes.
+
+Return ONLY valid JSON:
+
+{
+  "summary": {
+    "title": "...",
+    "bullets": ["...", "..."]
+  },
+  "flashcards": {
+    "cards": [
+      {
+        "front": "...",
+        "back": "..."
+      }
+    ]
+  },
+  "quiz": {
+    "questions": [
+      {
+        "question": "...",
+        "options": {
+          "A": "...",
+          "B": "...",
+          "C": "...",
+          "D": "..."
+        },
+        "answer": "A",
+        "explanation": "..."
+      }
+    ]
+  }
+}
+
+Only JSON.
+`;
+
+      const raw = await callGroq(
+        systemPrompt,
+        pdfText.slice(0, 12000)
+      );
+
+      const clean = raw
+        .replace(/```json|```/g, "")
+        .trim();
+
+      const parsed = JSON.parse(clean);
+
+      res.json(parsed);
+
+    } catch (err) {
+
+      console.error("PDF error:", err.message);
+
+      res.status(500).json({
+        error: "Failed to process PDF.",
+      });
+    }
+  }
+);
 
 // ─────────────────────────────────────────────
 // Generate ALL from Topic
