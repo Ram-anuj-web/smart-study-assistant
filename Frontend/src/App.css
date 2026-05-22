@@ -677,3 +677,59 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+/* ── Light Theme ── */
+[data-theme="light"] {
+  --accent: #7c3aed;
+  --accent2: #059669;
+  --accent3: #ea580c;
+  --accent-glow: rgba(124, 58, 237, 0.12);
+  --bg: #f8f7ff;
+  --bg2: #f0eeff;
+  --surface: #ffffff;
+  --surface2: #f3f0ff;
+  --surface3: #ede9fe;
+  --border: rgba(0, 0, 0, 0.07);
+  --border-hover: rgba(124, 58, 237, 0.35);
+  --text: #374151;
+  --text-muted: #9ca3af;
+  --text-h: #111827;
+  --danger: #dc2626;
+  --success: #059669;
+}
+
+[data-theme="light"] body {
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124,58,237,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 80% 80%, rgba(5,150,105,0.04) 0%, transparent 50%);
+}
+
+[data-theme="light"] .header {
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom-color: rgba(0, 0, 0, 0.07);
+}
+
+[data-theme="light"] .tab-btn.active {
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);
+}
+
+/* ── Theme Toggle Button ── */
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+
+import { useState, useEffect } from 'react'
 import './App.css'
 import NoteInput from './components/NoteInput'
 import TopicInput from './components/TopicInput'
@@ -19,6 +20,28 @@ const TOPIC_TABS = [
   { id: 'flashcards', label: 'Flashcards', icon: '🃏' },
   { id: 'quiz',       label: 'Quiz',       icon: '🧠' },
 ]
+// Add at the top of your App() function:
+const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+
+useEffect(() => {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+}, [theme]);
+
+// Update your header JSX:
+<header className="header">
+  <span className="logo-text">AI Smart Assistant</span>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+    <button
+      className="theme-toggle"
+      onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+      title="Toggle theme"
+    >
+      {theme === 'dark' ? '☀️' : '🌙'}
+    </button>
+    <span className="header-badge">v2.0</span>
+  </div>
+</header>
 
 export default function App() {
   const [mode, setMode]                     = useState('notes')
