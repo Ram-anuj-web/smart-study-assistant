@@ -1,6 +1,6 @@
 require("dotenv").config();
 const multer = require("multer");
-const pdfParse = require("pdf-parse").default || require("pdf-parse");
+const pdfParse = require("pdf-parse");
 const express = require("express");
 const cors = require("cors");
 const Groq = require("groq-sdk");
