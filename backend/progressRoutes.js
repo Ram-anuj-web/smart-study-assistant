@@ -1,4 +1,5 @@
 // progressRoutes.js
+const { processQuizResult, getDueTopics, getNextDifficulty } = require("./adaptiveEngine");
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
