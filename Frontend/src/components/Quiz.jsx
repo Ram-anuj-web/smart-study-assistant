@@ -1,36 +1,147 @@
 import { useState } from "react";
+import BASE_URL from "../config";
 
-export default function Quiz({ data }) {
-  const [selected, setSelected] = useState({});
-  const [submitted, setSubmitted] = useState(false);
-  const [revealed, setRevealed] = useState({});
-
+export default function Quiz({ data, topic = null, userId = null }) {
   const questions = data.questions;
-  const score = submitted
-    ? questions.filter((q, i) => selected[i] === q.answer).length
-    : 0;
 
-  function handleSelect(qIndex, option) {
-    if (submitted) return;
-    setSelected((s) => ({ ...s, [qIndex]: option }));
+  const [current, setCurrent]     = useState(0);
+  const [selected, setSelected]   = useState(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [score, setScore]         = useState(0);
+  const [wrongAnswers, setWrongAnswers] = useState([]);
+  const [finished, setFinished]   = useState(false);
+  const [submitted, setSubmitted] = useState(false); // progress saved?
+  const [saving, setSaving]       = useState(false);
+
+  const q = questions[current];
+
+  function handleSelect(key) {
+    if (confirmed) return;
+    setSelected(key);
   }
 
-  function handleSubmit() {
-    if (Object.keys(selected).length < questions.length) return;
-    setSubmitted(true);
+  function handleConfirm() {
+    if (!selected) return;
+    setConfirmed(true);
+
+    const isCorrect = selected === q.answer;
+    if (isCorrect) {
+      setScore((s) => s + 1);
+    } else {
+      setWrongAnswers((w) => [...w, q.question]);
+    }
   }
 
-  function handleReset() {
-    setSelected({});
+  function handleNext() {
+    if (current + 1 >= questions.length) {
+      setFinished(true);
+      // Auto-save progress after quiz
+      saveProgress(score + (selected === q.answer ? 1 : 0));
+    } else {
+      setCurrent((c) => c + 1);
+      setSelected(null);
+      setConfirmed(false);
+    }
+  }
+
+  async function saveProgress(finalScore) {
+    // Only save if we have userId and topic
+    if (!userId || !topic) return;
+
+    const scorePercent = Math.round((finalScore / questions.length) * 100);
+    setSaving(true);
+
+    try {
+      await fetch(`${BASE_URL}/api/progress/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          topic,
+          scorePercent,
+          wrongAnswers,
+        }),
+      });
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Failed to save progress:", err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleRestart() {
+    setCurrent(0);
+    setSelected(null);
+    setConfirmed(false);
+    setScore(0);
+    setWrongAnswers([]);
+    setFinished(false);
     setSubmitted(false);
-    setRevealed({});
   }
 
-  function toggleExplanation(i) {
-    setRevealed((r) => ({ ...r, [i]: !r[i] }));
+  const scorePercent = Math.round((score / questions.length) * 100);
+
+  function getGrade() {
+    if (scorePercent >= 90) return { label: "Excellent! 🎉", color: "var(--success, #22c55e)" };
+    if (scorePercent >= 75) return { label: "Good job! 👍", color: "var(--accent, #6366f1)" };
+    if (scorePercent >= 50) return { label: "Keep going 💪", color: "var(--warning, #f59e0b)" };
+    return { label: "Needs review 📚", color: "var(--danger, #ef4444)" };
   }
 
-  const allAnswered = Object.keys(selected).length === questions.length;
+  // ── Finished screen ──────────────────────────────────────────────────────
+  if (finished) {
+    const grade = getGrade();
+    return (
+      <div className="quiz-wrap">
+        <div className="output-header">
+          <span className="output-badge">🧠 Quiz Complete</span>
+        </div>
+
+        <div className="quiz-result-card">
+          <div className="result-score" style={{ color: grade.color }}>
+            {score} / {questions.length}
+          </div>
+          <div className="result-percent" style={{ color: grade.color }}>
+            {scorePercent}%
+          </div>
+          <div className="result-label">{grade.label}</div>
+
+          {/* Progress save status */}
+          {userId && topic && (
+            <div className="progress-save-status">
+              {saving && <span className="save-saving">⏳ Saving progress…</span>}
+              {submitted && !saving && (
+                <span className="save-done">✅ Progress saved!</span>
+              )}
+              {!saving && !submitted && !userId && (
+                <span className="save-hint">💡 Log in to track progress</span>
+              )}
+            </div>
+          )}
+
+          {wrongAnswers.length > 0 && (
+            <div className="wrong-answers">
+              <h4>Review these:</h4>
+              <ul>
+                {wrongAnswers.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <button className="btn-primary" onClick={handleRestart}>
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Question screen ──────────────────────────────────────────────────────
+  const isCorrect = confirmed && selected === q.answer;
+  const isWrong   = confirmed && selected !== q.answer;
 
   return (
     <div className="quiz-wrap">
@@ -38,108 +149,69 @@ export default function Quiz({ data }) {
         <div>
           <span className="output-badge">🧠 Quiz</span>
           <h2 className="output-title">
-            {submitted ? `Score: ${score}/${questions.length}` : `${questions.length} Questions`}
+            Question {current + 1} of {questions.length}
           </h2>
         </div>
-        {submitted && (
-          <button className="icon-btn" onClick={handleReset}>Retake</button>
+        <span className="quiz-score-live">Score: {score}</span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="quiz-progress-bar">
+        <div
+          className="quiz-progress-fill"
+          style={{ width: `${((current) / questions.length) * 100}%` }}
+        />
+      </div>
+
+      <div className="question-card">
+        <p className="question-text">{q.question}</p>
+
+        <div className="options-grid">
+          {Object.entries(q.options).map(([key, val]) => {
+            let cls = "option-btn";
+            if (confirmed) {
+              if (key === q.answer)       cls += " correct";
+              else if (key === selected)  cls += " wrong";
+            } else if (key === selected) {
+              cls += " selected";
+            }
+
+            return (
+              <button
+                key={key}
+                className={cls}
+                onClick={() => handleSelect(key)}
+              >
+                <span className="option-key">{key}</span>
+                <span className="option-val">{val}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {confirmed && (
+          <div className={`explanation ${isCorrect ? "correct-msg" : "wrong-msg"}`}>
+            <strong>{isCorrect ? "✅ Correct!" : `❌ Correct answer: ${q.answer}`}</strong>
+            <p>{q.explanation}</p>
+          </div>
         )}
       </div>
 
-      {/* Score bar */}
-      {submitted && (
-        <div className="score-bar-wrap">
-          <div className="score-bar">
-            <div
-              className="score-fill"
-              style={{ width: `${(score / questions.length) * 100}%` }}
-            />
-          </div>
-          <span className="score-label">
-            {score === questions.length
-              ? "Perfect! 🎉"
-              : score >= questions.length * 0.6
-              ? "Good job! 👍"
-              : "Keep studying! 📚"}
-          </span>
-        </div>
-      )}
-
-      {/* Questions */}
-      <div className="questions-list">
-        {questions.map((q, i) => {
-          const userAnswer = selected[i];
-          const isCorrect = userAnswer === q.answer;
-          const status = !submitted
-            ? "default"
-            : isCorrect
-            ? "correct"
-            : "wrong";
-
-          return (
-            <div
-              key={i}
-              className={`question-card ${status}`}
-              style={{ animationDelay: `${i * 80}ms` }}
-            >
-              <div className="question-top">
-                <span className="question-num">Q{i + 1}</span>
-                <p className="question-text">{q.question}</p>
-              </div>
-
-              <div className="options-grid">
-                {Object.entries(q.options).map(([key, val]) => {
-                  let optClass = "option";
-                  if (userAnswer === key) optClass += " selected";
-                  if (submitted && key === q.answer) optClass += " correct-opt";
-                  if (submitted && userAnswer === key && !isCorrect) optClass += " wrong-opt";
-
-                  return (
-                    <button
-                      key={key}
-                      className={optClass}
-                      onClick={() => handleSelect(i, key)}
-                      disabled={submitted}
-                    >
-                      <span className="opt-key">{key}</span>
-                      <span className="opt-val">{val}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Explanation */}
-              {submitted && (
-                <div className="explanation-wrap">
-                  <button
-                    className="explain-btn"
-                    onClick={() => toggleExplanation(i)}
-                  >
-                    {revealed[i] ? "Hide" : "Show"} Explanation
-                  </button>
-                  {revealed[i] && (
-                    <p className="explanation-text">{q.explanation}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+      <div className="quiz-actions">
+        {!confirmed ? (
+          <button
+            className="btn-primary"
+            onClick={handleConfirm}
+            disabled={!selected}
+          >
+            Confirm
+          </button>
+        ) : (
+          <button className="btn-primary" onClick={handleNext}>
+            {current + 1 >= questions.length ? "See Results" : "Next →"}
+          </button>
+        )}
       </div>
-
-      {/* Submit */}
-      {!submitted && (
-        <button
-          className="generate-btn"
-          onClick={handleSubmit}
-          disabled={!allAnswered}
-          style={{ marginTop: "1rem" }}
-        >
-          {allAnswered
-            ? "Submit Quiz"
-            : `Answer all questions (${Object.keys(selected).length}/${questions.length})`}
-        </button>
-      )}
     </div>
   );
 }

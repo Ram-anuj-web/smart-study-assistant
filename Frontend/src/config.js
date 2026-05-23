@@ -1,2 +1,2 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
-export default API_BASE
+const BASE_URL = "https://smart-study-assistant-vjt5.onrender.com";
+export default BASE_URL;

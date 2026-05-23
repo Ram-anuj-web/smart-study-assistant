@@ -6,6 +6,8 @@ import TopicParagraph from './components/TopicParagraph'
 import Summary from './components/Summary'
 import Quiz from './components/Quiz'
 import Flashcards from './components/Flashcards'
+import Progress from './components/Progress'
+import BASE_URL from './config'
 
 const NOTE_TABS = [
   { id: 'summary',    label: 'Summary',    icon: '📝' },
@@ -20,26 +22,49 @@ const TOPIC_TABS = [
   { id: 'quiz',       label: 'Quiz',       icon: '🧠' },
 ]
 
+// ── Generate or retrieve a persistent guest userId ──────────────────────────
+function getOrCreateUserId() {
+  let id = localStorage.getItem('study_user_id')
+  if (!id) {
+    id = 'guest_' + Math.random().toString(36).slice(2, 10)
+    localStorage.setItem('study_user_id', id)
+  }
+  return id
+}
+
 export default function App() {
   const [mode, setMode]                     = useState('notes')
   const [activeNoteTab, setActiveNoteTab]   = useState('summary')
   const [activeTopicTab, setActiveTopicTab] = useState('paragraph')
   const [noteResults, setNoteResults]       = useState({})
   const [topicResults, setTopicResults]     = useState(null)
+  const [currentTopic, setCurrentTopic]     = useState(null)   // track topic name for progress
   const [loading, setLoading]               = useState(false)
   const [theme, setTheme]                   = useState(() => localStorage.getItem('theme') || 'dark')
+  const [userId]                            = useState(getOrCreateUserId)
+  const [dueCount, setDueCount]             = useState(0)      // badge on Progress tab
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
   }, [theme])
 
+  // Fetch due count on load for badge
+  useEffect(() => {
+    if (!userId) return
+    fetch(`${BASE_URL}/api/progress/${userId}/recommendations`)
+      .then(r => r.json())
+      .then(d => { if (d.success) setDueCount(d.dueCount || 0) })
+      .catch(() => {})
+  }, [userId])
+
   function handleNoteGenerate(data) {
     setNoteResults(data)
   }
 
-  function handleTopicGenerate(data) {
+  function handleTopicGenerate(data, topic) {
     setTopicResults(data)
+    setCurrentTopic(topic || null)
     setActiveTopicTab('paragraph')
   }
 
@@ -61,7 +86,7 @@ export default function App() {
 
       <main className="main">
 
-        {/* Mode switcher */}
+        {/* ── Mode switcher ── */}
         <div className="tabs">
           <button
             className={`tab-btn ${mode === 'notes' ? 'active' : ''}`}
@@ -75,61 +100,70 @@ export default function App() {
           >
             🔍 By Topic
           </button>
+          <button
+            className={`tab-btn ${mode === 'progress' ? 'active' : ''}`}
+            onClick={() => setMode('progress')}
+          >
+            📊 Progress
+            {dueCount > 0 && (
+              <span className="due-badge">{dueCount}</span>
+            )}
+          </button>
         </div>
 
-        {/* NOTES MODE */}
-{mode === 'notes' && (
-  <>
-    <NoteInput
-      onGenerate={handleNoteGenerate}
-      loading={loading}
-      setLoading={setLoading}
-      activeTab={activeNoteTab}
-    />
-    {/* Wrap tabs inside a surface card so they connect visually */}
-    <div style={{
-      background: 'var(--surface)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-lg)',
-      padding: '1rem 1.5rem',
-      width: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '1rem'
-    }}>
-      <div className="tabs">
-        {NOTE_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab-btn ${activeNoteTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveNoteTab(tab.id)}
-          >
-            {tab.icon} {tab.label}
-          </button>
-        ))}
-      </div>
-      <div className="result-area">
-        {activeNoteTab === 'summary' && noteResults.summary ? (
-          <Summary data={noteResults.summary} />
-        ) : activeNoteTab === 'flashcards' && noteResults.flashcards ? (
-          <Flashcards data={noteResults.flashcards} />
-        ) : activeNoteTab === 'quiz' && noteResults.quiz ? (
-          <Quiz data={noteResults.quiz} />
-        ) : (
-          <div className="empty-state">
-            <div className="empty-icon">
-              {NOTE_TABS.find((t) => t.id === activeNoteTab)?.icon}
+        {/* ── NOTES MODE ── */}
+        {mode === 'notes' && (
+          <>
+            <NoteInput
+              onGenerate={handleNoteGenerate}
+              loading={loading}
+              setLoading={setLoading}
+              activeTab={activeNoteTab}
+            />
+            <div style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '1rem 1.5rem',
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}>
+              <div className="tabs">
+                {NOTE_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    className={`tab-btn ${activeNoteTab === tab.id ? 'active' : ''}`}
+                    onClick={() => setActiveNoteTab(tab.id)}
+                  >
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
+              </div>
+              <div className="result-area">
+                {activeNoteTab === 'summary' && noteResults.summary ? (
+                  <Summary data={noteResults.summary} />
+                ) : activeNoteTab === 'flashcards' && noteResults.flashcards ? (
+                  <Flashcards data={noteResults.flashcards} />
+                ) : activeNoteTab === 'quiz' && noteResults.quiz ? (
+                  // Notes quiz — no topic tracking (no topic name available)
+                  <Quiz data={noteResults.quiz} topic={null} userId={null} />
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-icon">
+                      {NOTE_TABS.find((t) => t.id === activeNoteTab)?.icon}
+                    </div>
+                    <h3>No {activeNoteTab} yet</h3>
+                    <p>Paste your notes and hit Generate</p>
+                  </div>
+                )}
+              </div>
             </div>
-            <h3>No {activeNoteTab} yet</h3>
-            <p>Paste your notes and hit Generate</p>
-          </div>
+          </>
         )}
-      </div>
-    </div>
-  </>
-)}
 
-        {/* TOPIC MODE */}
+        {/* ── TOPIC MODE ── */}
         {mode === 'topic' && (
           <>
             <TopicInput
@@ -154,7 +188,14 @@ export default function App() {
                   {activeTopicTab === 'paragraph'  && <TopicParagraph text={topicResults.paragraph} />}
                   {activeTopicTab === 'summary'    && <Summary data={topicResults.summary} />}
                   {activeTopicTab === 'flashcards' && <Flashcards data={topicResults.flashcards} />}
-                  {activeTopicTab === 'quiz'       && <Quiz data={topicResults.quiz} />}
+                  {activeTopicTab === 'quiz'       && (
+                    // Topic quiz — pass userId + topic for progress tracking
+                    <Quiz
+                      data={topicResults.quiz}
+                      topic={currentTopic}
+                      userId={userId}
+                    />
+                  )}
                 </div>
               </>
             ) : (
@@ -165,6 +206,11 @@ export default function App() {
               </div>
             )}
           </>
+        )}
+
+        {/* ── PROGRESS MODE ── */}
+        {mode === 'progress' && (
+          <Progress userId={userId} />
         )}
 
       </main>

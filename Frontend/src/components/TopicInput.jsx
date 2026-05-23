@@ -14,7 +14,7 @@ export default function TopicInput({ onGenerate, loading, setLoading }) {
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      onGenerate(data)
+      onGenerate(data, topic.trim())   // ← pass topic name as 2nd arg
     } catch (err) {
       alert(err.message || 'Something went wrong.')
     } finally {
