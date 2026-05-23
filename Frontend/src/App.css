@@ -6,23 +6,30 @@
   --accent2: #34d399;
   --accent3: #fb923c;
   --accent-glow: rgba(167, 139, 250, 0.2);
-  --bg: #080810;
-  --bg2: #0d0d1a;
-  --surface: #111120;
-  --surface2: #161628;
-  --surface3: #1c1c35;
-  --border: rgba(255,255,255,0.07);
-  --border-hover: rgba(167,139,250,0.4);
-  --text: #e2e2f0;
-  --text-muted: #5a5a7a;
-  --text-h: #f8f8ff;
-  --danger: #f87171;
+
+  /* FIXED: proper 3-step dark hierarchy with real contrast */
+  --bg:       #0b0b14;
+  --bg2:      #0f0f1c;
+  --surface:  #161625;   /* was #111120 — lifted for card visibility */
+  --surface2: #1e1e32;   /* was #161628 — lifted for input visibility */
+  --surface3: #272742;   /* was #1c1c35 */
+
+  /* FIXED: borders strong enough to actually see */
+  --border:       rgba(255,255,255,0.11);  /* was 0.07 — invisible */
+  --border-hover: rgba(167,139,250,0.45);
+
+  --text:       #e4e0f8;   /* was #e2e2f0, slightly warmer */
+  --text-muted: #7070a0;   /* was #5a5a7a — too dark, raised for readability */
+  --text-h:     #f8f8ff;
+  --danger:  #f87171;
   --success: #34d399;
-  --radius: 14px;
+
+  --radius:    14px;
   --radius-sm: 8px;
   --radius-lg: 20px;
-  --header-bg: rgba(8,8,16,0.85);
-  --body-gradient-1: rgba(167,139,250,0.08);
+
+  --header-bg:       rgba(11,11,20,0.88);
+  --body-gradient-1: rgba(167,139,250,0.09);
   --body-gradient-2: rgba(52,211,153,0.04);
 }
 
@@ -32,19 +39,19 @@
   --accent2: #059669;
   --accent3: #ea580c;
   --accent-glow: rgba(124, 58, 237, 0.12);
-  --bg: #f0ecff;
-  --bg2: #e8e2ff;
-  --surface: #ffffff;
+  --bg:      #f0ecff;
+  --bg2:     #e8e2ff;
+  --surface:  #ffffff;
   --surface2: #f5f2ff;
   --surface3: #ede8ff;
-  --border: rgba(100, 60, 180, 0.12);
+  --border:       rgba(100, 60, 180, 0.15);
   --border-hover: rgba(124, 58, 237, 0.4);
-  --text: #2d1b6b;
-  --text-muted: #8b7ab8;
-  --text-h: #1a0a4a;
-  --danger: #dc2626;
+  --text:      #2d1b6b;
+  --text-muted: #7a68a8;  /* slightly darker than before for contrast */
+  --text-h:    #1a0a4a;
+  --danger:  #dc2626;
   --success: #059669;
-  --header-bg: rgba(240, 236, 255, 0.9);
+  --header-bg:       rgba(240, 236, 255, 0.92);
   --body-gradient-1: rgba(124,58,237,0.06);
   --body-gradient-2: rgba(5,150,105,0.03);
 }
@@ -86,7 +93,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   transition: background 0.3s, border-color 0.3s;
 }
 
-/* Logo with icon badge */
 .logo-group {
   display: flex;
   align-items: center;
@@ -149,7 +155,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   transition: all 0.2s;
   cursor: pointer;
 }
-
 .theme-toggle:hover {
   border-color: var(--accent);
   background: var(--accent-glow);
@@ -169,40 +174,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   width: 100%;
 }
 
-/* ── Mode Toggle (My Notes / By Topic) ── */
-.mode-toggle {
-  display: flex;
-  gap: 0.25rem;
-  background: var(--surface);
-  padding: 0.35rem;
-  border-radius: 99px;
-  border: 1px solid var(--border);
-  width: fit-content;
-}
-
-.mode-btn {
-  padding: 0.55rem 1.4rem;
-  border-radius: 99px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  transition: all 0.2s ease;
-  font-family: 'Instrument Sans', sans-serif;
-  letter-spacing: 0.01em;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.mode-btn:hover { color: var(--text); background: var(--surface2); }
-
-.mode-btn.active {
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
-  color: #fff;
-  box-shadow: 0 4px 16px var(--accent-glow);
-}
-
-/* ── Output Tabs (Summary / Flashcards / Quiz) ── */
+/* ── Tabs (My Notes / By Topic + Summary/Flashcards/Quiz) ── */
 .tabs {
   display: flex;
   gap: 0.25rem;
@@ -211,6 +183,8 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   border-radius: var(--radius);
   border: 1px solid var(--border);
   width: fit-content;
+  /* FIXED: shadow so tab bar lifts off the bg */
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
 }
 
 .tab-btn {
@@ -226,56 +200,12 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   align-items: center;
   gap: 0.4rem;
 }
-
 .tab-btn:hover { color: var(--text); background: var(--surface2); }
-
 .tab-btn.active {
   background: linear-gradient(135deg, var(--accent), #8b5cf6);
   color: #fff;
   box-shadow: 0 4px 16px var(--accent-glow);
 }
-
-/* ── Feature Pills ── */
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
-  width: 100%;
-}
-
-.feature-pill {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.65rem 1rem;
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 0.03em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  transition: border-color 0.2s, background 0.2s;
-}
-
-.feature-pill:hover {
-  border-color: var(--border-hover);
-  background: var(--surface2);
-  color: var(--text);
-}
-
-.feature-pill .pill-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.feature-pill .pill-dot.purple { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
-.feature-pill .pill-dot.green  { background: var(--accent2); box-shadow: 0 0 6px rgba(52,211,153,0.3); }
-.feature-pill .pill-dot.amber  { background: var(--accent3); box-shadow: 0 0 6px rgba(251,146,60,0.3); }
 
 /* ── NoteInput Card ── */
 .note-input-wrap {
@@ -287,11 +217,13 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 1.5rem;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  /* FIXED: shadow so card visually separates from bg */
+  box-shadow: 0 2px 16px rgba(0,0,0,0.3);
 }
-
 .note-input-wrap:focus-within {
-  border-color: rgba(167,139,250,0.25);
+  border-color: rgba(167,139,250,0.35);
+  box-shadow: 0 4px 24px rgba(167,139,250,0.12);
 }
 
 .note-input-wrap label {
@@ -326,7 +258,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   cursor: pointer;
   white-space: nowrap;
 }
-
 .file-btn:hover {
   background: var(--accent-glow);
   border-color: var(--accent);
@@ -352,6 +283,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .textarea-wrap textarea {
   width: 100%;
   min-height: 150px;
+  /* FIXED: surface2 instead of transparent-ish surface */
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -365,13 +297,11 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
-
 .textarea-wrap textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
-
-.textarea-wrap textarea::placeholder { color: var(--text-muted); opacity: 0.7; }
+.textarea-wrap textarea::placeholder { color: var(--text-muted); opacity: 0.8; }
 
 .char-count {
   position: absolute;
@@ -381,7 +311,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   color: var(--text-muted);
   font-family: 'JetBrains Mono', monospace;
 }
-
 .char-count.warn { color: var(--accent3); }
 
 /* ── Generate Button ── */
@@ -402,14 +331,11 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   box-shadow: 0 4px 20px var(--accent-glow);
   letter-spacing: 0.01em;
 }
-
 .generate-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
-
 .generate-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 28px var(--accent-glow);
+  box-shadow: 0 6px 28px rgba(167,139,250,0.35);
 }
-
 .generate-btn:active:not(:disabled) { transform: translateY(0); }
 
 .spinner {
@@ -420,7 +346,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
-
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Result Area ── */
@@ -442,20 +367,17 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   color: var(--text-muted);
   text-align: center;
 }
-
 .empty-icon {
   font-size: 2.5rem;
-  filter: grayscale(0.5);
-  opacity: 0.6;
+  filter: grayscale(0.3);
+  opacity: 0.7;
 }
-
 .empty-state h3 {
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--text);
   font-family: 'Syne', sans-serif;
 }
-
 .empty-state p { font-size: 0.875rem; }
 
 /* ── Output Header ── */
@@ -466,7 +388,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   margin-bottom: 1.5rem;
   gap: 1rem;
 }
-
 .output-badge {
   font-size: 0.68rem;
   font-family: 'JetBrains Mono', monospace;
@@ -476,7 +397,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   display: block;
   margin-bottom: 0.5rem;
 }
-
 .output-title {
   font-size: 1.35rem;
   font-weight: 700;
@@ -484,7 +404,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   line-height: 1.3;
   font-family: 'Syne', sans-serif;
 }
-
 .icon-btn {
   padding: 0.4rem 1rem;
   background: var(--surface2);
@@ -497,7 +416,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   transition: all 0.2s;
   font-family: 'JetBrains Mono', monospace;
 }
-
 .icon-btn:hover {
   color: var(--text);
   border-color: var(--accent);
@@ -509,7 +427,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   width: 100%;
   animation: fadeUp 0.4s ease;
 }
-
 .bullet-list {
   list-style: none;
   display: flex;
@@ -517,13 +434,13 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   gap: 0.6rem;
   margin-bottom: 1.5rem;
 }
-
 .bullet-item {
   display: flex;
   align-items: flex-start;
   gap: 0.85rem;
   padding: 1rem 1.2rem;
-  background: var(--surface);
+  /* FIXED: surface2 instead of surface — creates visible contrast against card bg */
+  background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 0.9rem;
@@ -531,12 +448,10 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   animation: fadeUp 0.35s ease both;
   transition: border-color 0.2s, background 0.2s;
 }
-
 .bullet-item:hover {
   border-color: var(--border-hover);
-  background: var(--surface2);
+  background: var(--surface3);
 }
-
 .bullet-dot {
   width: 7px;
   height: 7px;
@@ -545,7 +460,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   border-radius: 50%;
   margin-top: 0.45rem;
 }
-
 .output-footer {
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -563,7 +477,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   align-items: center;
   animation: fadeUp 0.4s ease;
 }
-
 .flashcards-wrap .output-header { width: 100%; }
 
 .mastered-count {
@@ -571,7 +484,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   color: var(--accent2);
   font-family: 'JetBrains Mono', monospace;
 }
-
 .progress-dots {
   display: flex;
   gap: 0.4rem;
@@ -579,7 +491,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   justify-content: center;
   margin-bottom: 1.75rem;
 }
-
 .dot {
   width: 8px;
   height: 8px;
@@ -589,14 +500,12 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   cursor: pointer;
   transition: all 0.2s;
 }
-
 .dot.active {
   background: var(--accent);
   transform: scale(1.4);
   box-shadow: 0 0 8px var(--accent-glow);
   border-color: transparent;
 }
-
 .dot.mastered {
   background: var(--accent2);
   border-color: transparent;
@@ -609,7 +518,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   cursor: pointer;
   margin-bottom: 1.75rem;
 }
-
 .card-inner {
   width: 100%;
   height: 100%;
@@ -617,7 +525,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   transform-style: preserve-3d;
   transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .card-inner.flipped { transform: rotateY(180deg); }
 
 .card-face {
@@ -635,17 +542,14 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   border: 1px solid var(--border);
   transition: box-shadow 0.2s;
 }
-
 .card-face:hover { box-shadow: 0 8px 32px var(--accent-glow); }
-
-.card-front { background: var(--surface); }
-
+/* FIXED: card faces use surface2/surface3 so they're visible */
+.card-front { background: var(--surface2); }
 .card-back {
-  background: var(--surface2);
+  background: var(--surface3);
   border-color: var(--border-hover);
   transform: rotateY(180deg);
 }
-
 .card-label {
   font-size: 0.65rem;
   font-family: 'JetBrains Mono', monospace;
@@ -654,14 +558,12 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   color: var(--accent);
   margin-bottom: 1.25rem;
 }
-
 .card-text {
   font-size: 1.05rem;
   line-height: 1.65;
   color: var(--text-h);
   font-weight: 500;
 }
-
 .card-hint {
   font-size: 0.68rem;
   color: var(--text-muted);
@@ -675,10 +577,9 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   align-items: center;
   margin-bottom: 0.75rem;
 }
-
 .nav-btn {
   padding: 0.65rem 1.3rem;
-  background: var(--surface);
+  background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
@@ -688,8 +589,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   cursor: pointer;
   transition: all 0.2s;
 }
-
-.nav-btn:hover { border-color: var(--accent); background: var(--surface2); }
+.nav-btn:hover { border-color: var(--accent); background: var(--surface3); }
 
 .mastered-btn {
   padding: 0.65rem 1.3rem;
@@ -702,13 +602,11 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   cursor: pointer;
   transition: all 0.2s;
 }
-
 .mastered-btn.is-mastered {
-  background: rgba(52,211,153,0.1);
+  background: rgba(52,211,153,0.12);
   border-color: var(--accent2);
   color: var(--accent2);
 }
-
 .card-counter {
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -720,14 +618,12 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   width: 100%;
   animation: fadeUp 0.4s ease;
 }
-
 .score-bar-wrap {
   margin-bottom: 1.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
-
 .score-bar {
   width: 100%;
   height: 5px;
@@ -735,37 +631,33 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   border-radius: 99px;
   overflow: hidden;
 }
-
 .score-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--accent), var(--accent2));
   border-radius: 99px;
   transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .score-label {
   font-size: 0.78rem;
   color: var(--text-muted);
   font-family: 'JetBrains Mono', monospace;
 }
-
 .questions-list {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
-
 .question-card {
-  background: var(--surface);
+  /* FIXED: surface2 so quiz cards contrast against the wrapping surface card */
+  background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 1.4rem;
   animation: fadeUp 0.4s ease both;
   transition: border-color 0.3s;
 }
-
-.question-card.correct { border-color: rgba(52,211,153,0.4); }
-.question-card.wrong   { border-color: rgba(248,113,113,0.4); }
+.question-card.correct { border-color: rgba(52,211,153,0.45); }
+.question-card.wrong   { border-color: rgba(248,113,113,0.45); }
 
 .question-top {
   display: flex;
@@ -773,7 +665,6 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   align-items: flex-start;
   margin-bottom: 1rem;
 }
-
 .question-num {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.68rem;
@@ -783,26 +674,24 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   padding-top: 3px;
   letter-spacing: 0.05em;
 }
-
 .question-text {
   font-size: 0.95rem;
   line-height: 1.55;
   font-weight: 500;
   color: var(--text-h);
 }
-
 .options-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
 }
-
 .option {
   display: flex;
   align-items: center;
   gap: 0.7rem;
   padding: 0.7rem 0.9rem;
-  background: var(--surface2);
+  /* FIXED: surface3 so options pop inside the surface2 question card */
+  background: var(--surface3);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
@@ -811,29 +700,24 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   font-family: 'Instrument Sans', sans-serif;
   color: var(--text);
 }
-
 .option:hover:not(:disabled) {
   border-color: var(--accent);
   background: var(--accent-glow);
 }
-
 .option.selected {
   border-color: var(--accent);
   background: var(--accent-glow);
 }
-
 .option.correct-opt {
   border-color: rgba(52,211,153,0.6) !important;
   background: rgba(52,211,153,0.1) !important;
   color: var(--accent2);
 }
-
 .option.wrong-opt {
   border-color: rgba(248,113,113,0.6) !important;
   background: rgba(248,113,113,0.08) !important;
   color: var(--danger);
 }
-
 .opt-key {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.65rem;
@@ -842,18 +726,15 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   min-width: 14px;
   letter-spacing: 0.05em;
 }
-
 .opt-val {
   font-size: 0.85rem;
   line-height: 1.4;
 }
-
 .explanation-wrap {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border);
 }
-
 .explain-btn {
   background: none;
   border: none;
@@ -866,15 +747,50 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   transition: opacity 0.2s;
   letter-spacing: 0.03em;
 }
-
 .explain-btn:hover { opacity: 0.7; }
-
 .explanation-text {
   font-size: 0.85rem;
   color: var(--text-muted);
   line-height: 1.65;
   animation: fadeUp 0.3s ease;
 }
+
+/* ── Feature Pills ── */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  width: 100%;
+}
+.feature-pill {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.65rem 1rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: border-color 0.2s, background 0.2s;
+}
+.feature-pill:hover {
+  border-color: var(--border-hover);
+  background: var(--surface2);
+  color: var(--text);
+}
+.feature-pill .pill-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.feature-pill .pill-dot.purple { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
+.feature-pill .pill-dot.green  { background: var(--accent2); box-shadow: 0 0 6px rgba(52,211,153,0.3); }
+.feature-pill .pill-dot.amber  { background: var(--accent3); box-shadow: 0 0 6px rgba(251,146,60,0.3); }
 
 /* ── Animations ── */
 @keyframes fadeUp {
