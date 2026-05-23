@@ -1,4 +1,4 @@
-const progressRoutes = require("./progressRoutes");
+// const progressRoutes = require("./progressRoutes");
 require("dotenv").config();
 const multer = require("multer");
 const pdfParse = require("pdf-parse");
@@ -49,7 +49,7 @@ const limiter = rateLimit({
 });
 
 app.use("/api/", limiter);
-app.use("/api/progress", progressRoutes);
+// app.use("/api/progress", progressRoutes);
 
 // ─────────────────────────────────────────────
 // Helper: Call Groq + safe JSON parse
