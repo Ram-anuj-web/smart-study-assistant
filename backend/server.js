@@ -1,5 +1,9 @@
-// const progressRoutes = require("./progressRoutes");
+const progressRoutes = require("./progressRoutes");
 require("dotenv").config();
+const mongoose = require("mongoose");
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB connected ✅"))
+  .catch((err) => console.error("MongoDB error:", err));
 const multer = require("multer");
 const pdfParse = require("pdf-parse");
 const express = require("express");
@@ -50,7 +54,7 @@ const limiter = rateLimit({
 });
 
 app.use("/api/", limiter);
-// app.use("/api/progress", progressRoutes);
+app.use("/api/progress", progressRoutes);
 
 // ─────────────────────────────────────────────
 // Helper: Call Groq + safe JSON parse
