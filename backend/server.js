@@ -1,3 +1,4 @@
+const progressRoutes = require("./progressRoutes");
 require("dotenv").config();
 const multer = require("multer");
 const pdfParse = require("pdf-parse");
@@ -32,7 +33,7 @@ const groq = new Groq({
 // ─────────────────────────────────────────────
 app.use(cors({
   origin: "*",
-  methods: ["GET", "POST"],
+ methods: ["GET", "POST", "DELETE"],
   allowedHeaders: ["Content-Type"],
 }));
 
@@ -48,6 +49,7 @@ const limiter = rateLimit({
 });
 
 app.use("/api/", limiter);
+app.use("/api/progress", progressRoutes);
 
 // ─────────────────────────────────────────────
 // Helper: Call Groq + safe JSON parse
