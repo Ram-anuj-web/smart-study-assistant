@@ -76,7 +76,7 @@ function handleTopicGenerate(data, topic) {
   return (
     <div className="app">
       <header className="header">
-      <span className="logo-text">Smart Buddy</span>
+     <span className="logo-text">AI Smart Assistant</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <button
             className="theme-toggle"
