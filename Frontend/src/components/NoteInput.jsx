@@ -26,7 +26,7 @@ export default function NoteInput({ onGenerate, loading, setLoading }) {
       }
       const data = await res.json();
       if (!res.ok) { alert(data.error || "Something went wrong."); return; }
-      onGenerate(data);
+      onGenerate(data,notes);
       setNotes("");
       setPdfFile(null);
     } catch (err) {

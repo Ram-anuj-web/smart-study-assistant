@@ -1,3 +1,4 @@
+import ChatBox from './components/ChatBox'
 import { useState, useEffect } from 'react'
 import './App.css'
 import NoteInput from './components/NoteInput'
@@ -39,6 +40,7 @@ export default function App() {
   const [noteResults, setNoteResults]       = useState({})
   const [topicResults, setTopicResults]     = useState(null)
   const [currentTopic, setCurrentTopic]     = useState(null)   // track topic name for progress
+  const [chatContext, setChatContext] = useState(null)
   const [loading, setLoading]               = useState(false)
   const [theme, setTheme]                   = useState(() => localStorage.getItem('theme') || 'dark')
   const [userId]                            = useState(getOrCreateUserId)
@@ -58,15 +60,17 @@ export default function App() {
       .catch(() => {})
   }, [userId])
 
-  function handleNoteGenerate(data) {
-    setNoteResults(data)
-  }
+function handleNoteGenerate(data, notesText) {
+  setNoteResults(data)
+  setChatContext(notesText)
+}
 
-  function handleTopicGenerate(data, topic) {
-    setTopicResults(data)
-    setCurrentTopic(topic || null)
-    setActiveTopicTab('paragraph')
-  }
+function handleTopicGenerate(data, topic) {
+  setTopicResults(data)
+  setCurrentTopic(topic || null)
+  setActiveTopicTab('paragraph')
+  setChatContext(topic ? `Topic: ${topic}\n\n${data.paragraph || ''}` : null)
+}
 
   return (
     <div className="app">
@@ -213,6 +217,7 @@ export default function App() {
           <Progress userId={userId} />
         )}
 
+      <ChatBox context={chatContext} />
       </main>
     </div>
   )
