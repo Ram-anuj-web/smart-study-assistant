@@ -33,7 +33,7 @@ export default function Quiz({ data, topic = null, userId = null }) {
   function handleNext() {
     if (current + 1 >= questions.length) {
       setFinished(true);
-      saveProgress(score + (selected === q.answer ? 1 : 0));
+     saveProgress(score);
     } else {
       setCurrent((c) => c + 1);
       setSelected(null);
