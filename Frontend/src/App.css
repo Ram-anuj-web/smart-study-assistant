@@ -117,6 +117,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+   color: var(--accent);
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -136,7 +137,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 99px;
-  color: var(--text-muted);
+ color: var(--accent);  /* or var(--text) for neutral */
   letter-spacing: 0.05em;
 }
 
@@ -147,7 +148,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   border-radius: 50%;
   background: var(--surface2);
   border: 1px solid var(--border);
-  color: var(--text-muted);
+  color: var(--accent);  /* #a78bfa — visible purple */
   font-size: 1rem;
   display: flex;
   align-items: center;
