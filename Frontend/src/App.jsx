@@ -63,6 +63,7 @@ export default function App() {
 function handleNoteGenerate(data, notesText) {
   setNoteResults(data)
   setChatContext(notesText)
+  setCurrentTopic(data.summary?.title || "My Notes")
 }
 
 function handleTopicGenerate(data, topic) {
@@ -151,8 +152,7 @@ function handleTopicGenerate(data, topic) {
                 ) : activeNoteTab === 'flashcards' && noteResults.flashcards ? (
                   <Flashcards data={noteResults.flashcards} />
                 ) : activeNoteTab === 'quiz' && noteResults.quiz ? (
-                  // Notes quiz — no topic tracking (no topic name available)
-                  <Quiz data={noteResults.quiz} topic={null} userId={null} />
+                <Quiz data={noteResults.quiz} topic={currentTopic} userId={userId} />
                 ) : (
                   <div className="empty-state">
                     <div className="empty-icon">
