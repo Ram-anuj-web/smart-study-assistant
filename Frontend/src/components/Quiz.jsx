@@ -41,9 +41,10 @@ export default function Quiz({ data, topic = null, userId = null }) {
     }
   }
 
-  async function saveProgress(finalScore) {
+ async function saveProgress(finalScore) {
     if (!userId || !topic) return;
     const scorePercent = Math.round((finalScore / questions.length) * 100);
+    console.log("Saving:", { userId, topic, scorePercent, wrongAnswers }); // ← add this
     setSaving(true);
     try {
       await fetch(`${BASE_URL}/api/progress/update`, {
