@@ -117,11 +117,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-   color: var(--accent);
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--accent);
 }
 
 .header-right {
