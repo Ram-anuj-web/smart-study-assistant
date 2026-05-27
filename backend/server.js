@@ -317,6 +317,48 @@ Only JSON.
     res.status(500).json({ error: err.message || "Failed to generate topic content." });
   }
 });
+// ─────────────────────────────────────────────
+// Chat with context (Notes / Topic)
+// ─────────────────────────────────────────────
+app.post("/api/chat", async (req, res) => {
+  const { messages, context } = req.body;
+
+  if (!context || context.trim().length < 10) {
+    return res.status(400).json({ error: "No context provided." });
+  }
+
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: "Invalid messages." });
+  }
+
+  const systemPrompt = `
+You are a smart study assistant. The user is studying the following content:
+
+---
+${context.slice(0, 8000)}
+---
+
+Answer questions based on this content. Be concise, clear, and helpful.
+If the user asks something unrelated, gently redirect them to the study material.
+`;
+
+  try {
+    const response = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      max_tokens: 1000,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...messages,
+      ],
+    });
+
+    const reply = response.choices[0].message.content;
+    res.json({ reply });
+  } catch (err) {
+    console.error("Chat error:", err.message);
+    res.status(500).json({ error: "Chat failed." });
+  }
+});
 
 // ─────────────────────────────────────────────
 // Health Check
