@@ -1,7 +1,5 @@
 import { useState } from "react";
-// import BASE_URL from "../config"; // uncomment in your project
-
-const BASE_URL = ""; // placeholder
+ import BASE_URL from "../config"; 
 
 export default function Quiz({ data, topic = null, userId = null }) {
   const questions = data.questions;
