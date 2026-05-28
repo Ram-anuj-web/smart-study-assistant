@@ -93,21 +93,76 @@ async function fetchWebContext(topic) {
 }
 
 // ─────────────────────────────────────────────
-// Helper: Call Groq + safe JSON parse
+// Groq model fallback chain
 // ─────────────────────────────────────────────
-async function callGroq(systemPrompt, userContent, maxTokens = 4000) {
-  const response = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    max_tokens: maxTokens,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userContent },
-    ],
-  });
+const GROQ_MODELS = [
+  "llama-3.3-70b-versatile",   // primary — best quality
+  "llama-3.1-8b-instant",      // fallback 1 — separate quota, very fast
+  "gemma2-9b-it",              // fallback 2 — another separate quota
+];
 
-  return response.choices[0].message.content;
+async function callGroq(systemPrompt, userContent, maxTokens = 4000) {
+  let lastError;
+
+  for (const model of GROQ_MODELS) {
+    try {
+      const response = await groq.chat.completions.create({
+        model,
+        max_tokens: maxTokens,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      });
+      if (model !== GROQ_MODELS[0]) {
+        console.log(`⚠️ Used fallback model: ${model}`);
+      }
+      return response.choices[0].message.content;
+    } catch (err) {
+      const isRateLimit = err?.status === 429 ||
+        err?.message?.includes("rate_limit") ||
+        err?.message?.includes("Rate limit");
+
+      if (isRateLimit) {
+        console.warn(`Rate limit hit on ${model}, trying next...`);
+        lastError = err;
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw new Error("All Groq models hit rate limits. Try again in a few hours.");
 }
 
+async function callGroqMessages(messagesArray, systemPrompt, maxTokens = 1000) {
+  let lastError;
+
+  for (const model of GROQ_MODELS) {
+    try {
+      const response = await groq.chat.completions.create({
+        model,
+        max_tokens: maxTokens,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messagesArray,
+        ],
+      });
+      if (model !== GROQ_MODELS[0]) console.log(`⚠️ Fallback model used: ${model}`);
+      return response.choices[0].message.content;
+    } catch (err) {
+      const isRateLimit = err?.status === 429 || err?.message?.includes("rate_limit");
+      if (isRateLimit) { lastError = err; continue; }
+      throw err;
+    }
+  }
+
+  throw new Error("All Groq models rate limited.");
+}
+
+// ─────────────────────────────────────────────
+// Safe JSON parse
+// ─────────────────────────────────────────────
 function safeParseJSON(raw, label) {
   const clean = raw.replace(/```json|```/g, "").trim();
   try {
@@ -293,11 +348,9 @@ app.post("/api/topic", async (req, res) => {
     focusWeakAreas       = false,
   } = settings;
 
-  // Fetch real-world context
   const webContext = await fetchWebContext(topic);
   console.log(`🔍 Web context for "${topic}":`, webContext ? "✅ Found" : "⚠️ Not found");
 
-  // Fetch weak areas from MongoDB
   let weakAreaContext = "";
   if (focusWeakAreas && userId) {
     try {
@@ -391,7 +444,6 @@ Return ONLY valid JSON:
 No markdown. Only JSON.
 `;
 
-  // Scale max_tokens based on question count — capped at 6000 for Groq free tier
   const maxTokens = Math.min(6000, 2000 + questionCount * 250);
 
   try {
@@ -439,16 +491,7 @@ If the user asks something completely unrelated to both, gently redirect them.
 `;
 
   try {
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      max_tokens: 1000,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages,
-      ],
-    });
-
-    const reply = response.choices[0].message.content;
+    const reply = await callGroqMessages(messages, systemPrompt, 1000);
     res.json({ reply });
   } catch (err) {
     console.error("Chat error:", err.message);
