@@ -498,7 +498,6 @@ ${weakAreaContext}
 Generate study material with these settings:
 - Difficulty: ${difficulty} — ${difficulty === "Easy" ? "basic recall questions" : difficulty === "Hard" ? "questions requiring deep understanding and analysis" : difficulty === "Mixed" ? "mix of easy, medium, and hard questions" : "moderate understanding required"}
 - Number of quiz questions: exactly ${questionCount}
-- Question types: ${selectedTypes}
 - Detail level: ${detailInstruction}
 ${hintInstruction}
 
