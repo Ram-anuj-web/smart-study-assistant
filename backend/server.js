@@ -177,6 +177,7 @@ function validateQuiz(questions) {
   }
   return errors;
 }
+
 function safeParseJSON(raw, label) {
   const clean = raw.replace(/```json|```/g, "").trim();
   try {
@@ -185,6 +186,7 @@ function safeParseJSON(raw, label) {
     throw new Error(`${label}: AI returned invalid JSON — ${err.message}`);
   }
 }
+
 async function generateValidatedQuiz(topic, webContext, settings, weakAreaContext = "") {
   const {
     difficulty = "Medium",
@@ -245,7 +247,6 @@ Return ONLY a JSON array — no wrapper object, no markdown:
       const raw = await callGroq(quizPrompt, `Generate ${questionCount} questions about: ${topic}`, 4000);
       const clean = raw.replace(/```json|```/g, "").trim();
 
-      // Handle both array and wrapped object responses
       let questions;
       const parsed = JSON.parse(clean);
       if (Array.isArray(parsed)) {
@@ -266,7 +267,6 @@ Return ONLY a JSON array — no wrapper object, no markdown:
       console.warn(`⚠️ Quiz attempt ${attempt} failed validation:`, errors);
 
       if (attempt === MAX_RETRIES) {
-        // Auto-fix: remove invalid questions rather than serving wrong ones
         const validQuestions = questions.filter(q => q.options && q.answer && q.options[q.answer]);
         console.warn(`⚠️ Returning ${validQuestions.length}/${questions.length} valid questions after ${MAX_RETRIES} attempts`);
         return validQuestions;
@@ -483,11 +483,17 @@ app.post("/api/topic", async (req, res) => {
       console.warn("Could not fetch weak areas:", e.message);
     }
   }
+
   const detailInstruction = {
     Brief:      "Keep the paragraph and bullet points concise — 2-3 sentences max each.",
     Standard:   "Use moderate detail — 4-6 sentences in the paragraph.",
     "In-depth": "Be thorough — 6-8 sentences in the paragraph, detailed bullet points, and comprehensive flashcards.",
   }[detailLevel] || "";
+
+  // ✅ FIX: hintInstruction is now properly defined before use in systemPrompt
+  const hintInstruction = hints
+    ? "- Add a hint field to each quiz question — a subtle clue that does not reveal the answer."
+    : "";
 
   const systemPrompt = `
 You are a study assistant.
@@ -506,8 +512,6 @@ Given the topic, generate:
 2. A summary
 3. Flashcards
 
-
-
 Return ONLY valid JSON:
 
 {
@@ -516,7 +520,7 @@ Return ONLY valid JSON:
     "title": "...",
     "bullets": ["...", "..."]
   },
- "flashcards": {
+  "flashcards": {
     "cards": [{ "front": "...", "back": "..." }]
   }
 }
@@ -527,17 +531,17 @@ No markdown. Only JSON.
   const maxTokens = Math.min(6000, 2000 + questionCount * 250);
 
   try {
-const [contentRaw, quizQuestions] = await Promise.all([
-  callGroq(systemPrompt, `Topic: ${topic}`, maxTokens),
-  generateValidatedQuiz(topic, webContext, settings, weakAreaContext),
-]);
+    const [contentRaw, quizQuestions] = await Promise.all([
+      callGroq(systemPrompt, `Topic: ${topic}`, maxTokens),
+      generateValidatedQuiz(topic, webContext, settings, weakAreaContext),
+    ]);
 
-const parsed = safeParseJSON(contentRaw, "topic");
+    const parsed = safeParseJSON(contentRaw, "topic");
 
-parsed.quiz = { questions: quizQuestions };
-parsed.settings = { timedMode, timePerQuestion: 30 };
+    parsed.quiz = { questions: quizQuestions };
+    parsed.settings = { timedMode, timePerQuestion: 30 };
 
-res.json(parsed);
+    res.json(parsed);
   } catch (err) {
     console.error("Topic error:", err.message);
     res.status(500).json({ error: err.message || "Failed to generate topic content." });
