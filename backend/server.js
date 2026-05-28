@@ -10,6 +10,7 @@ const express = require("express");
 const cors = require("cors");
 const Groq = require("groq-sdk");
 const rateLimit = require("express-rate-limit");
+const axios = require("axios"); // ✅ NEW
 
 const app = express();
 app.set("trust proxy", 1);
@@ -38,7 +39,7 @@ const groq = new Groq({
 // ─────────────────────────────────────────────
 app.use(cors({
   origin: "*",
- methods: ["GET", "POST", "DELETE"],
+  methods: ["GET", "POST", "DELETE"],
   allowedHeaders: ["Content-Type"],
 }));
 
@@ -55,6 +56,35 @@ const limiter = rateLimit({
 
 app.use("/api/", limiter);
 app.use("/api/progress", progressRoutes);
+
+// ─────────────────────────────────────────────
+// ✅ NEW: Serper.dev — Fetch real web context
+// ─────────────────────────────────────────────
+async function fetchWebContext(topic) {
+  try {
+    const response = await axios.post(
+      "https://google.serper.dev/search",
+      { q: topic, num: 5 },
+      {
+        headers: {
+          "X-API-KEY": process.env.SERPER_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const results = response.data?.organic || [];
+
+    if (results.length === 0) return "";
+
+    return results
+      .map((r) => `- ${r.title}: ${r.snippet}`)
+      .join("\n");
+  } catch (err) {
+    console.warn("⚠️ Serper web search failed, proceeding without context:", err.message);
+    return ""; // graceful fallback — quiz still generates, just without grounding
+  }
+}
 
 // ─────────────────────────────────────────────
 // Helper: Call Groq + safe JSON parse
@@ -174,7 +204,6 @@ app.post("/api/pdf-summary", upload.single("pdf"), async (req, res) => {
       return res.status(400).json({ error: "No PDF uploaded." });
     }
 
-    // Extract text from PDF
     const data = await pdfParse(req.file.buffer);
     const pdfText = data.text;
 
@@ -229,7 +258,6 @@ Only JSON.
   } catch (err) {
     console.error("PDF error:", err.message);
 
-    // Multer file type rejection
     if (err.message === "Only PDF files are allowed.") {
       return res.status(400).json({ error: err.message });
     }
@@ -239,7 +267,7 @@ Only JSON.
 });
 
 // ─────────────────────────────────────────────
-// Generate ALL from Topic
+// ✅ FIXED: Generate ALL from Topic (with web grounding)
 // ─────────────────────────────────────────────
 app.post("/api/topic", async (req, res) => {
   const { topic } = req.body;
@@ -248,15 +276,24 @@ app.post("/api/topic", async (req, res) => {
     return res.status(400).json({ error: "Topic too short." });
   }
 
+  // ✅ Fetch real-world facts before generating
+  const webContext = await fetchWebContext(topic);
+  console.log(`🔍 Web context fetched for "${topic}":`, webContext ? "✅ Found" : "⚠️ Not found");
+
   const systemPrompt = `
 You are a study assistant.
 
-Given a topic:
+${
+  webContext
+    ? `IMPORTANT: Use ONLY the following real, verified facts to generate the quiz questions and answers. Do NOT invent or assume any facts beyond what is listed below.\n\nVERIFIED FACTS:\n${webContext}\n`
+    : `Generate content based on your general knowledge about the topic.`
+}
 
-1. Write an educational paragraph
-2. Create a summary
-3. Create flashcards
-4. Create a quiz
+Given the topic, generate:
+1. An educational paragraph (4-6 clear sentences)
+2. A summary
+3. Flashcards
+4. A quiz — every question and answer MUST be based on the verified facts above
 
 RULES:
 
@@ -317,6 +354,7 @@ Only JSON.
     res.status(500).json({ error: err.message || "Failed to generate topic content." });
   }
 });
+
 // ─────────────────────────────────────────────
 // Chat with context (Notes / Topic)
 // ─────────────────────────────────────────────
