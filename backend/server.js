@@ -62,12 +62,14 @@ app.use("/api/progress", progressRoutes);
 // ─────────────────────────────────────────────
 async function fetchWebContext(topic) {
   try {
-    // ✅ Add current year to make search more precise
-    const query = topic.toLowerCase().includes("2026") ? topic : `${topic} 2026`;
+    // ✅ Only add year for sports/news topics, not general knowledge
+    const sportsKeywords = ["ipl", "cricket", "football", "nba", "match", "season", "standings", "score"];
+    const isSports = sportsKeywords.some((k) => topic.toLowerCase().includes(k));
+    const query = isSports ? `${topic} 2026` : topic;
 
     const response = await axios.post(
       "https://google.serper.dev/search",
-      { q: query, num: 8 }, // ✅ Increased from 5 to 8 results for more coverage
+      { q: query, num: 8 },
       {
         headers: {
           "X-API-KEY": process.env.SERPER_API_KEY,
@@ -82,7 +84,6 @@ async function fetchWebContext(topic) {
 
     if (results.length === 0 && !answerBox) return "";
 
-    // ✅ Prioritize answerBox and knowledgeGraph — these are most accurate
     let context = "";
     if (answerBox) context += `DIRECT ANSWER: ${answerBox}\n`;
     if (knowledgeGraph) context += `KNOWLEDGE: ${knowledgeGraph}\n`;
