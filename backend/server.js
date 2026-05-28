@@ -163,12 +163,119 @@ async function callGroqMessages(messagesArray, systemPrompt, maxTokens = 1000) {
 // ─────────────────────────────────────────────
 // Safe JSON parse
 // ─────────────────────────────────────────────
+function validateQuiz(questions) {
+  const errors = [];
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    if (!q.options || !q.answer) {
+      errors.push(`Q${i + 1}: missing options or answer`);
+      continue;
+    }
+    if (!q.options[q.answer]) {
+      errors.push(`Q${i + 1}: answer key "${q.answer}" not found in options`);
+    }
+  }
+  return errors;
+}
 function safeParseJSON(raw, label) {
   const clean = raw.replace(/```json|```/g, "").trim();
   try {
     return JSON.parse(clean);
   } catch (err) {
     throw new Error(`${label}: AI returned invalid JSON — ${err.message}`);
+  }
+}
+async function generateValidatedQuiz(topic, webContext, settings, weakAreaContext = "") {
+  const {
+    difficulty = "Medium",
+    questionCount = 10,
+    questionTypes = ["MCQ"],
+    hints = false,
+    detailedExplanations = true,
+  } = settings;
+
+  const questionTypeInstructions = {
+    "MCQ":               "Multiple choice with 4 options (A, B, C, D)",
+    "True / False":      'True/False — options must be exactly {"A": "True", "B": "False"}',
+    "Fill in the blank": "Fill-in-the-blank — question has ___, options are 4 possible answers",
+    "Scenario based":    "Real-world scenario requiring applied knowledge",
+  };
+
+  const selectedTypes = questionTypes.map(t => questionTypeInstructions[t] || t).join("; ");
+  const explanationInstruction = detailedExplanations
+    ? "Write a 2-3 sentence explanation: why the answer is correct AND why the other options are wrong."
+    : "Write a one-sentence explanation.";
+
+  const quizPrompt = `
+You are a quiz generator. Your ONLY job is to generate accurate quiz questions.
+
+${webContext ? `USE ONLY THESE VERIFIED FACTS — do not invent anything:\n${webContext}\n` : ""}
+${weakAreaContext}
+
+Topic: ${topic}
+Difficulty: ${difficulty}
+Question types: ${selectedTypes}
+Number of questions: exactly ${questionCount}
+
+STRICT RULES — failure to follow = wrong output:
+1. Each question has options A, B, C, D (except True/False which has only A and B).
+2. The "answer" field must be the letter (A/B/C/D) of the CORRECT option.
+3. Verify: does options[answer] contain the correct answer text? If not, fix it before outputting.
+4. Spread correct answers across A, B, C, D — do NOT put all answers as A.
+5. The explanation must describe why options[answer] is correct. It must NOT say a different letter is correct.
+6. Base every fact on the verified facts above only. Do not hallucinate.
+${hints ? '7. Add a "hint" field — a subtle clue, does not reveal the answer.' : ""}
+
+Return ONLY a JSON array — no wrapper object, no markdown:
+
+[
+  {
+    "question": "...",
+    "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
+    "answer": "B",
+    "explanation": "B is correct because... A is wrong because... C is wrong because..."${hints ? ',\n    "hint": "..."' : ""}
+  }
+]
+`;
+
+  const MAX_RETRIES = 3;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const raw = await callGroq(quizPrompt, `Generate ${questionCount} questions about: ${topic}`, 4000);
+      const clean = raw.replace(/```json|```/g, "").trim();
+
+      // Handle both array and wrapped object responses
+      let questions;
+      const parsed = JSON.parse(clean);
+      if (Array.isArray(parsed)) {
+        questions = parsed;
+      } else if (parsed.questions) {
+        questions = parsed.questions;
+      } else {
+        throw new Error("Unexpected quiz format from AI");
+      }
+
+      const errors = validateQuiz(questions);
+
+      if (errors.length === 0) {
+        console.log(`✅ Quiz validated on attempt ${attempt}`);
+        return questions;
+      }
+
+      console.warn(`⚠️ Quiz attempt ${attempt} failed validation:`, errors);
+
+      if (attempt === MAX_RETRIES) {
+        // Auto-fix: remove invalid questions rather than serving wrong ones
+        const validQuestions = questions.filter(q => q.options && q.answer && q.options[q.answer]);
+        console.warn(`⚠️ Returning ${validQuestions.length}/${questions.length} valid questions after ${MAX_RETRIES} attempts`);
+        return validQuestions;
+      }
+
+    } catch (err) {
+      if (attempt === MAX_RETRIES) throw err;
+      console.warn(`Quiz attempt ${attempt} error: ${err.message}, retrying...`);
+    }
   }
 }
 
@@ -192,6 +299,11 @@ Generate:
 3. Quiz
 
 RULES:
+
+CRITICAL QUIZ RULES:
+- "answer" must be the letter (A/B/C/D) whose option text is actually correct
+- Verify options[answer] is correct before outputting
+- Explanation must describe why options[answer] is correct
 
 - Summary must contain:
   {
@@ -274,6 +386,11 @@ app.post("/api/pdf-summary", upload.single("pdf"), async (req, res) => {
 
     const systemPrompt = `
 You are a study assistant.
+
+CRITICAL QUIZ RULES:
+- "answer" must be the letter (A/B/C/D) whose option text is actually correct
+- Verify options[answer] is correct before outputting
+- Explanation must describe why options[answer] is correct
 
 Summarize the PDF into concise study notes.
 
@@ -366,26 +483,6 @@ app.post("/api/topic", async (req, res) => {
       console.warn("Could not fetch weak areas:", e.message);
     }
   }
-
-  const questionTypeInstructions = {
-    "MCQ":               'Multiple choice with 4 options (A, B, C, D)',
-    "True / False":      'True/False questions — options must be exactly {"A": "True", "B": "False"}',
-    "Fill in the blank": 'Fill-in-the-blank — question contains a blank (___), options are 4 possible answers',
-    "Scenario based":    'Real-world scenario questions that require applying knowledge',
-  };
-
-  const selectedTypes = questionTypes
-    .map((t) => questionTypeInstructions[t] || t)
-    .join("; ");
-
-  const explanationInstruction = detailedExplanations
-    ? "Write a detailed explanation (3-4 sentences) for why the answer is correct and why others are wrong."
-    : "Write a brief one-sentence explanation.";
-
-  const hintInstruction = hints
-    ? 'Also include a "hint" field on each question — a subtle clue that does not reveal the answer.'
-    : '';
-
   const detailInstruction = {
     Brief:      "Keep the paragraph and bullet points concise — 2-3 sentences max each.",
     Standard:   "Use moderate detail — 4-6 sentences in the paragraph.",
@@ -409,14 +506,8 @@ Given the topic, generate:
 1. An educational paragraph
 2. A summary
 3. Flashcards
-4. A quiz with exactly ${questionCount} questions
 
-QUIZ RULES:
-- Mix the question types as specified: ${questionTypes.join(", ")}
-- ${explanationInstruction}
-- Every question and answer MUST be based on the verified facts above
-- Vary the answer position (do not always make A the correct answer)
-${hints ? '- Include a "hint" field on every question' : ''}
+
 
 Return ONLY valid JSON:
 
@@ -426,18 +517,8 @@ Return ONLY valid JSON:
     "title": "...",
     "bullets": ["...", "..."]
   },
-  "flashcards": {
+ "flashcards": {
     "cards": [{ "front": "...", "back": "..." }]
-  },
-  "quiz": {
-    "questions": [
-      {
-        "question": "...",
-        "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
-        "answer": "A",
-        "explanation": "..."${hints ? ',\n        "hint": "..."' : ''}
-      }
-    ]
   }
 }
 
@@ -447,12 +528,17 @@ No markdown. Only JSON.
   const maxTokens = Math.min(6000, 2000 + questionCount * 250);
 
   try {
-    const raw = await callGroq(systemPrompt, `Topic: ${topic}`, maxTokens);
-    const parsed = safeParseJSON(raw, "topic");
+const [contentRaw, quizQuestions] = await Promise.all([
+  callGroq(systemPrompt, `Topic: ${topic}`, maxTokens),
+  generateValidatedQuiz(topic, webContext, settings, weakAreaContext),
+]);
 
-    parsed.settings = { timedMode, timePerQuestion: 30 };
+const parsed = safeParseJSON(contentRaw, "topic");
 
-    res.json(parsed);
+parsed.quiz = { questions: quizQuestions };
+parsed.settings = { timedMode, timePerQuestion: 30 };
+
+res.json(parsed);
   } catch (err) {
     console.error("Topic error:", err.message);
     res.status(500).json({ error: err.message || "Failed to generate topic content." });
