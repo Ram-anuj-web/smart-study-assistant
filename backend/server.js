@@ -62,9 +62,12 @@ app.use("/api/progress", progressRoutes);
 // ─────────────────────────────────────────────
 async function fetchWebContext(topic) {
   try {
+    // ✅ Add current year to make search more precise
+    const query = topic.toLowerCase().includes("2026") ? topic : `${topic} 2026`;
+
     const response = await axios.post(
       "https://google.serper.dev/search",
-      { q: topic, num: 5 },
+      { q: query, num: 8 }, // ✅ Increased from 5 to 8 results for more coverage
       {
         headers: {
           "X-API-KEY": process.env.SERPER_API_KEY,
@@ -74,15 +77,21 @@ async function fetchWebContext(topic) {
     );
 
     const results = response.data?.organic || [];
+    const answerBox = response.data?.answerBox?.answer || response.data?.answerBox?.snippet || "";
+    const knowledgeGraph = response.data?.knowledgeGraph?.description || "";
 
-    if (results.length === 0) return "";
+    if (results.length === 0 && !answerBox) return "";
 
-    return results
-      .map((r) => `- ${r.title}: ${r.snippet}`)
-      .join("\n");
+    // ✅ Prioritize answerBox and knowledgeGraph — these are most accurate
+    let context = "";
+    if (answerBox) context += `DIRECT ANSWER: ${answerBox}\n`;
+    if (knowledgeGraph) context += `KNOWLEDGE: ${knowledgeGraph}\n`;
+    context += results.map((r) => `- ${r.title}: ${r.snippet}`).join("\n");
+
+    return context;
   } catch (err) {
-    console.warn("⚠️ Serper web search failed, proceeding without context:", err.message);
-    return ""; // graceful fallback — quiz still generates, just without grounding
+    console.warn("⚠️ Serper web search failed:", err.message);
+    return "";
   }
 }
 
