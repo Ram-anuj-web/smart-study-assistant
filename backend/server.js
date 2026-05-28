@@ -10,7 +10,7 @@ const express = require("express");
 const cors = require("cors");
 const Groq = require("groq-sdk");
 const rateLimit = require("express-rate-limit");
-const axios = require("axios"); // ✅ NEW
+const axios = require("axios");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -20,7 +20,7 @@ app.set("trust proxy", 1);
 // ─────────────────────────────────────────────
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === "application/pdf") {
       cb(null, true);
@@ -45,24 +45,20 @@ app.use(cors({
 
 app.use(express.json({ limit: "10mb" }));
 
-// Rate limit — 100 requests per 15 mins
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: {
-    error: "Too many requests. Please wait a moment.",
-  },
+  message: { error: "Too many requests. Please wait a moment." },
 });
 
 app.use("/api/", limiter);
 app.use("/api/progress", progressRoutes);
 
 // ─────────────────────────────────────────────
-// ✅ NEW: Serper.dev — Fetch real web context
+// Serper.dev — Fetch real web context
 // ─────────────────────────────────────────────
 async function fetchWebContext(topic) {
   try {
-    // ✅ Only add year for sports/news topics, not general knowledge
     const sportsKeywords = ["ipl", "cricket", "football", "nba", "match", "season", "standings", "score"];
     const isSports = sportsKeywords.some((k) => topic.toLowerCase().includes(k));
     const query = isSports ? `${topic} 2026` : topic;
@@ -99,10 +95,10 @@ async function fetchWebContext(topic) {
 // ─────────────────────────────────────────────
 // Helper: Call Groq + safe JSON parse
 // ─────────────────────────────────────────────
-async function callGroq(systemPrompt, userContent) {
+async function callGroq(systemPrompt, userContent, maxTokens = 4000) {
   const response = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
-    max_tokens: 4000,
+    max_tokens: maxTokens,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userContent },
@@ -277,10 +273,7 @@ Only JSON.
 });
 
 // ─────────────────────────────────────────────
-// ✅ FIXED: Generate ALL from Topic (with web grounding)
-// ─────────────────────────────────────────────
-// ─────────────────────────────────────────────
-// UPDATED: Generate ALL from Topic (with customizer + web grounding)
+// Generate ALL from Topic (with customizer + web grounding)
 // ─────────────────────────────────────────────
 app.post("/api/topic", async (req, res) => {
   const { topic, settings = {}, userId } = req.body;
@@ -290,38 +283,36 @@ app.post("/api/topic", async (req, res) => {
   }
 
   const {
-    difficulty         = "Medium",
-    questionCount      = 10,
-    detailLevel        = "Standard",
-    questionTypes      = ["MCQ"],
-    hints              = false,
-    timedMode          = false,
+    difficulty           = "Medium",
+    questionCount        = 10,
+    detailLevel          = "Standard",
+    questionTypes        = ["MCQ"],
+    hints                = false,
+    timedMode            = false,
     detailedExplanations = true,
-    focusWeakAreas     = false,
+    focusWeakAreas       = false,
   } = settings;
 
   // Fetch real-world context
   const webContext = await fetchWebContext(topic);
   console.log(`🔍 Web context for "${topic}":`, webContext ? "✅ Found" : "⚠️ Not found");
 
-  // Optionally fetch weak areas from MongoDB
+  // Fetch weak areas from MongoDB
   let weakAreaContext = "";
-// Optionally fetch weak areas from MongoDB
-let weakAreaContext = "";
-if (focusWeakAreas && userId) {
-  try {
-    const UserProgress = mongoose.models.UserProgress;
-    if (UserProgress) {
-      const record = await UserProgress.findOne({ userId, topic });
-      const lastSession = record?.history?.[record.history.length - 1];
-      if (lastSession?.wrongAnswers?.length) {
-        weakAreaContext = `\nThe user previously struggled with these questions — prioritise similar ones:\n${lastSession.wrongAnswers.map((q) => `- ${q}`).join("\n")}\n`;
+  if (focusWeakAreas && userId) {
+    try {
+      const UserProgress = mongoose.models.UserProgress;
+      if (UserProgress) {
+        const record = await UserProgress.findOne({ userId, topic });
+        const lastSession = record?.history?.[record.history.length - 1];
+        if (lastSession?.wrongAnswers?.length) {
+          weakAreaContext = `\nThe user previously struggled with these questions — prioritise similar ones:\n${lastSession.wrongAnswers.map((q) => `- ${q}`).join("\n")}\n`;
+        }
       }
+    } catch (e) {
+      console.warn("Could not fetch weak areas:", e.message);
     }
-  } catch (e) {
-    console.warn("Could not fetch weak areas:", e.message);
   }
-}
 
   const questionTypeInstructions = {
     "MCQ":               'Multiple choice with 4 options (A, B, C, D)',
@@ -343,9 +334,9 @@ if (focusWeakAreas && userId) {
     : '';
 
   const detailInstruction = {
-    Brief:     "Keep the paragraph and bullet points concise — 2-3 sentences max each.",
-    Standard:  "Use moderate detail — 4-6 sentences in the paragraph.",
-    "In-depth":"Be thorough — 6-8 sentences in the paragraph, detailed bullet points, and comprehensive flashcards.",
+    Brief:      "Keep the paragraph and bullet points concise — 2-3 sentences max each.",
+    Standard:   "Use moderate detail — 4-6 sentences in the paragraph.",
+    "In-depth": "Be thorough — 6-8 sentences in the paragraph, detailed bullet points, and comprehensive flashcards.",
   }[detailLevel] || "";
 
   const systemPrompt = `
@@ -400,11 +391,13 @@ Return ONLY valid JSON:
 No markdown. Only JSON.
 `;
 
+  // Scale max_tokens based on question count — capped at 6000 for Groq free tier
+  const maxTokens = Math.min(6000, 2000 + questionCount * 250);
+
   try {
-    const raw = await callGroq(systemPrompt, `Topic: ${topic}`);
+    const raw = await callGroq(systemPrompt, `Topic: ${topic}`, maxTokens);
     const parsed = safeParseJSON(raw, "topic");
 
-    // Attach timedMode setting so frontend can use it
     parsed.settings = { timedMode, timePerQuestion: 30 };
 
     res.json(parsed);
@@ -428,7 +421,6 @@ app.post("/api/chat", async (req, res) => {
     return res.status(400).json({ error: "Invalid messages." });
   }
 
-  // ✅ Fetch real-time web facts based on the last user message
   const lastUserMessage = messages.filter(m => m.role === "user").at(-1)?.content || "";
   const webContext = await fetchWebContext(lastUserMessage);
 
