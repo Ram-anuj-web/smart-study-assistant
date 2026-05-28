@@ -278,85 +278,134 @@ Only JSON.
 // ─────────────────────────────────────────────
 // ✅ FIXED: Generate ALL from Topic (with web grounding)
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// UPDATED: Generate ALL from Topic (with customizer + web grounding)
+// ─────────────────────────────────────────────
 app.post("/api/topic", async (req, res) => {
-  const { topic } = req.body;
+  const { topic, settings = {}, userId } = req.body;
 
   if (!topic || topic.trim().length < 3) {
     return res.status(400).json({ error: "Topic too short." });
   }
 
-  // ✅ Fetch real-world facts before generating
+  const {
+    difficulty         = "Medium",
+    questionCount      = 10,
+    detailLevel        = "Standard",
+    questionTypes      = ["MCQ"],
+    hints              = false,
+    timedMode          = false,
+    detailedExplanations = true,
+    focusWeakAreas     = false,
+  } = settings;
+
+  // Fetch real-world context
   const webContext = await fetchWebContext(topic);
-  console.log(`🔍 Web context fetched for "${topic}":`, webContext ? "✅ Found" : "⚠️ Not found");
+  console.log(`🔍 Web context for "${topic}":`, webContext ? "✅ Found" : "⚠️ Not found");
+
+  // Optionally fetch weak areas from MongoDB
+  let weakAreaContext = "";
+// Optionally fetch weak areas from MongoDB
+let weakAreaContext = "";
+if (focusWeakAreas && userId) {
+  try {
+    const UserProgress = mongoose.models.UserProgress;
+    if (UserProgress) {
+      const record = await UserProgress.findOne({ userId, topic });
+      const lastSession = record?.history?.[record.history.length - 1];
+      if (lastSession?.wrongAnswers?.length) {
+        weakAreaContext = `\nThe user previously struggled with these questions — prioritise similar ones:\n${lastSession.wrongAnswers.map((q) => `- ${q}`).join("\n")}\n`;
+      }
+    }
+  } catch (e) {
+    console.warn("Could not fetch weak areas:", e.message);
+  }
+}
+
+  const questionTypeInstructions = {
+    "MCQ":               'Multiple choice with 4 options (A, B, C, D)',
+    "True / False":      'True/False questions — options must be exactly {"A": "True", "B": "False"}',
+    "Fill in the blank": 'Fill-in-the-blank — question contains a blank (___), options are 4 possible answers',
+    "Scenario based":    'Real-world scenario questions that require applying knowledge',
+  };
+
+  const selectedTypes = questionTypes
+    .map((t) => questionTypeInstructions[t] || t)
+    .join("; ");
+
+  const explanationInstruction = detailedExplanations
+    ? "Write a detailed explanation (3-4 sentences) for why the answer is correct and why others are wrong."
+    : "Write a brief one-sentence explanation.";
+
+  const hintInstruction = hints
+    ? 'Also include a "hint" field on each question — a subtle clue that does not reveal the answer.'
+    : '';
+
+  const detailInstruction = {
+    Brief:     "Keep the paragraph and bullet points concise — 2-3 sentences max each.",
+    Standard:  "Use moderate detail — 4-6 sentences in the paragraph.",
+    "In-depth":"Be thorough — 6-8 sentences in the paragraph, detailed bullet points, and comprehensive flashcards.",
+  }[detailLevel] || "";
 
   const systemPrompt = `
 You are a study assistant.
 
-${
-  webContext
-    ? `IMPORTANT: Use ONLY the following real, verified facts to generate the quiz questions and answers. Do NOT invent or assume any facts beyond what is listed below.\n\nVERIFIED FACTS:\n${webContext}\n`
-    : `Generate content based on your general knowledge about the topic.`
-}
+${webContext ? `IMPORTANT: Use ONLY the following verified real-world facts. Do NOT invent facts.\n\nVERIFIED FACTS:\n${webContext}\n` : ""}
+${weakAreaContext}
+
+Generate study material with these settings:
+- Difficulty: ${difficulty} — ${difficulty === "Easy" ? "basic recall questions" : difficulty === "Hard" ? "questions requiring deep understanding and analysis" : difficulty === "Mixed" ? "mix of easy, medium, and hard questions" : "moderate understanding required"}
+- Number of quiz questions: exactly ${questionCount}
+- Question types: ${selectedTypes}
+- Detail level: ${detailInstruction}
+${hintInstruction}
 
 Given the topic, generate:
-1. An educational paragraph (4-6 clear sentences)
+1. An educational paragraph
 2. A summary
 3. Flashcards
-4. A quiz — every question and answer MUST be based on the verified facts above
+4. A quiz with exactly ${questionCount} questions
 
-RULES:
+QUIZ RULES:
+- Mix the question types as specified: ${questionTypes.join(", ")}
+- ${explanationInstruction}
+- Every question and answer MUST be based on the verified facts above
+- Vary the answer position (do not always make A the correct answer)
+${hints ? '- Include a "hint" field on every question' : ''}
 
-- Paragraph: 4-6 clear sentences
-
-- Summary:
-{
-  "title": "...",
-  "bullets": ["...", "..."]
-}
-
-- Flashcards:
-{
-  "cards": [
-    {
-      "front": "...",
-      "back": "..."
-    }
-  ]
-}
-
-- Quiz:
-{
-  "questions": [
-    {
-      "question": "...",
-      "options": {
-        "A": "...",
-        "B": "...",
-        "C": "...",
-        "D": "..."
-      },
-      "answer": "A",
-      "explanation": "..."
-    }
-  ]
-}
-
-Return ONLY JSON in this format:
+Return ONLY valid JSON:
 
 {
   "paragraph": "...",
-  "summary": {},
-  "flashcards": {},
-  "quiz": {}
+  "summary": {
+    "title": "...",
+    "bullets": ["...", "..."]
+  },
+  "flashcards": {
+    "cards": [{ "front": "...", "back": "..." }]
+  },
+  "quiz": {
+    "questions": [
+      {
+        "question": "...",
+        "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
+        "answer": "A",
+        "explanation": "..."${hints ? ',\n        "hint": "..."' : ''}
+      }
+    ]
+  }
 }
 
-No markdown.
-Only JSON.
+No markdown. Only JSON.
 `;
 
   try {
     const raw = await callGroq(systemPrompt, `Topic: ${topic}`);
     const parsed = safeParseJSON(raw, "topic");
+
+    // Attach timedMode setting so frontend can use it
+    parsed.settings = { timedMode, timePerQuestion: 30 };
+
     res.json(parsed);
   } catch (err) {
     console.error("Topic error:", err.message);
