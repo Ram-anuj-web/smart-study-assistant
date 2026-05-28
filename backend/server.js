@@ -369,6 +369,10 @@ app.post("/api/chat", async (req, res) => {
     return res.status(400).json({ error: "Invalid messages." });
   }
 
+  // ✅ Fetch real-time web facts based on the last user message
+  const lastUserMessage = messages.filter(m => m.role === "user").at(-1)?.content || "";
+  const webContext = await fetchWebContext(lastUserMessage);
+
   const systemPrompt = `
 You are a smart study assistant. The user is studying the following content:
 
@@ -376,8 +380,11 @@ You are a smart study assistant. The user is studying the following content:
 ${context.slice(0, 8000)}
 ---
 
-Answer questions based on this content. Be concise, clear, and helpful.
-If the user asks something unrelated, gently redirect them to the study material.
+${webContext ? `You also have access to the following real-time web facts. Use these to answer current or live questions accurately:\n\n${webContext}\n` : ""}
+
+Answer questions using both the study content and real-time facts above.
+Be concise, clear, and helpful.
+If the user asks something completely unrelated to both, gently redirect them.
 `;
 
   try {
