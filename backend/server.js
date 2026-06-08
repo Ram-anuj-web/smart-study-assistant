@@ -14,8 +14,7 @@ const axios = require("axios");
 const app = express();
 app.set("trust proxy", 1);
 
-const resourceRoutes = require("./routes/resourceRoutes");
-app.use("/api/resources", resourceRoutes);
+
 
 
 
@@ -48,6 +47,8 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: "10mb" }));
+const resourceRoutes = require("./routes/resourceRoutes");
+app.use("/api/resources", resourceRoutes);
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
