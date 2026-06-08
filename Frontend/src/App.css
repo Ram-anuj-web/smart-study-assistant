@@ -754,6 +754,131 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   line-height: 1.65;
   animation: fadeUp 0.3s ease;
 }
+.resources-page {
+  padding: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.resources-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+.resources-subtitle {
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+
+.resources-search {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.resources-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.resources-btn {
+  padding: 0.75rem 1.5rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.resources-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.resources-keywords {
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.resources-section {
+  margin-bottom: 2rem;
+}
+
+.resources-section h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.resource-card {
+  display: block;
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.resource-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.resource-source-badge {
+  font-size: 0.75rem;
+  background: var(--badge-bg, #e0e7ff);
+  color: var(--badge-color, #4338ca);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.resource-thumbnail {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin: 0.75rem 0;
+}
+
+.resource-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0.5rem 0;
+}
+
+.resource-card-snippet {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.resources-error {
+  color: red;
+  margin-bottom: 1rem;
+}
+
+.resources-empty {
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 2rem;
+}
 
 /* ── Feature Pills ── */
 .feature-grid {

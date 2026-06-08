@@ -5,6 +5,7 @@ import NoteInput from './components/NoteInput'
 import TopicInput from './components/TopicInput'
 import TopicParagraph from './components/TopicParagraph'
 import Summary from './components/Summary'
+import Resources from "./pages/Resources";
 import Quiz from './components/Quiz'
 import Flashcards from './components/Flashcards'
 import Progress from './components/Progress'
@@ -23,7 +24,6 @@ const TOPIC_TABS = [
   { id: 'quiz',       label: 'Quiz',       icon: '🧠' },
 ]
 
-// ── Generate or retrieve a persistent guest userId ──────────────────────────
 function getOrCreateUserId() {
   let id = localStorage.getItem('study_user_id')
   if (!id) {
@@ -39,19 +39,18 @@ export default function App() {
   const [activeTopicTab, setActiveTopicTab] = useState('paragraph')
   const [noteResults, setNoteResults]       = useState({})
   const [topicResults, setTopicResults]     = useState(null)
-  const [currentTopic, setCurrentTopic]     = useState(null)   // track topic name for progress
-  const [chatContext, setChatContext] = useState(null)
+  const [currentTopic, setCurrentTopic]     = useState(null)
+  const [chatContext, setChatContext]        = useState(null)
   const [loading, setLoading]               = useState(false)
   const [theme, setTheme]                   = useState(() => localStorage.getItem('theme') || 'dark')
   const [userId]                            = useState(getOrCreateUserId)
-  const [dueCount, setDueCount]             = useState(0)      // badge on Progress tab
+  const [dueCount, setDueCount]             = useState(0)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
   }, [theme])
 
-  // Fetch due count on load for badge
   useEffect(() => {
     if (!userId) return
     fetch(`${BASE_URL}/api/progress/${userId}/recommendations`)
@@ -60,23 +59,23 @@ export default function App() {
       .catch(() => {})
   }, [userId])
 
-function handleNoteGenerate(data, notesText) {
-  setNoteResults(data)
-  setChatContext(notesText)
-  setCurrentTopic(data.summary?.title || "My Notes")
-}
+  function handleNoteGenerate(data, notesText) {
+    setNoteResults(data)
+    setChatContext(notesText)
+    setCurrentTopic(data.summary?.title || "My Notes")
+  }
 
-function handleTopicGenerate(data, topic) {
-  setTopicResults(data)
-  setCurrentTopic(topic || null)
-  setActiveTopicTab('paragraph')
-  setChatContext(topic ? `Topic: ${topic}\n\n${data.paragraph || ''}` : null)
-}
+  function handleTopicGenerate(data, topic) {
+    setTopicResults(data)
+    setCurrentTopic(topic || null)
+    setActiveTopicTab('paragraph')
+    setChatContext(topic ? `Topic: ${topic}\n\n${data.paragraph || ''}` : null)
+  }
 
   return (
     <div className="app">
       <header className="header">
-     <span className="logo-text">AI Smart Assistant</span>
+        <span className="logo-text">AI Smart Assistant</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <button
             className="theme-toggle"
@@ -113,6 +112,12 @@ function handleTopicGenerate(data, topic) {
             {dueCount > 0 && (
               <span className="due-badge">{dueCount}</span>
             )}
+          </button>
+          <button
+            className={`tab-btn ${mode === 'resources' ? 'active' : ''}`}
+            onClick={() => setMode('resources')}
+          >
+            📚 Resources
           </button>
         </div>
 
@@ -152,7 +157,7 @@ function handleTopicGenerate(data, topic) {
                 ) : activeNoteTab === 'flashcards' && noteResults.flashcards ? (
                   <Flashcards data={noteResults.flashcards} />
                 ) : activeNoteTab === 'quiz' && noteResults.quiz ? (
-                <Quiz data={noteResults.quiz} topic={currentTopic} userId={userId} />
+                  <Quiz data={noteResults.quiz} topic={currentTopic} userId={userId} />
                 ) : (
                   <div className="empty-state">
                     <div className="empty-icon">
@@ -193,7 +198,6 @@ function handleTopicGenerate(data, topic) {
                   {activeTopicTab === 'summary'    && <Summary data={topicResults.summary} />}
                   {activeTopicTab === 'flashcards' && <Flashcards data={topicResults.flashcards} />}
                   {activeTopicTab === 'quiz'       && (
-                    // Topic quiz — pass userId + topic for progress tracking
                     <Quiz
                       data={topicResults.quiz}
                       topic={currentTopic}
@@ -215,6 +219,11 @@ function handleTopicGenerate(data, topic) {
         {/* ── PROGRESS MODE ── */}
         {mode === 'progress' && (
           <Progress userId={userId} />
+        )}
+
+        {/* ── RESOURCES MODE ── */}
+        {mode === 'resources' && (
+          <Resources />
         )}
 
       <ChatBox context={chatContext} />
