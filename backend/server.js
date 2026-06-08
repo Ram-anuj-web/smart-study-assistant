@@ -11,11 +11,13 @@ const cors = require("cors");
 const Groq = require("groq-sdk");
 const rateLimit = require("express-rate-limit");
 const axios = require("axios");
+const app = express();
+app.set("trust proxy", 1);
+
 const resourceRoutes = require("./routes/resourceRoutes");
 app.use("/api/resources", resourceRoutes);
 
-const app = express();
-app.set("trust proxy", 1);
+
 
 // ─────────────────────────────────────────────
 // Multer — PDF file type validation
