@@ -2,12 +2,11 @@
 
 const axios = require("axios");
 
-// ─── Serper Search (replaces DuckDuckGo) ───────────────────────────
 async function fetchDuckDuckGoResults(query) {
   try {
     const res = await axios.post(
       "https://google.serper.dev/search",
-      { q: `${query} study tutorial`, num: 5 },
+      { q: `${query} explained study notes tutorial academic`, num: 8 },
       {
         headers: {
           "X-API-KEY": process.env.SERPER_API_KEY,
@@ -17,13 +16,17 @@ async function fetchDuckDuckGoResults(query) {
     );
 
     const results = res.data?.organic || [];
+    const blockedDomains = ["youtube.com", "reddit.com", "twitter.com", "instagram.com", "facebook.com", "tiktok.com", "pinterest.com"];
 
-    return results.map((r) => ({
-      title: r.title,
-      url: r.link,
-      snippet: r.snippet,
-      source: "duckduckgo",
-    }));
+    return results
+      .filter((r) => !blockedDomains.some((d) => r.link.includes(d)))
+      .slice(0, 5)
+      .map((r) => ({
+        title: r.title,
+        url: r.link,
+        snippet: r.snippet,
+        source: "duckduckgo",
+      }));
   } catch (err) {
     console.error("Serper error:", err.message);
     return [];
@@ -35,18 +38,18 @@ function getYouTubeSearchLinks(query) {
   const encoded = encodeURIComponent(query);
   return [
     {
-      title: `"${query}" — Tutorials on YouTube`,
-      url: `https://www.youtube.com/results?search_query=${encoded}+tutorial`,
+      title: `"${query}" — Full Tutorial`,
+      url: `https://www.youtube.com/results?search_query=${encoded}+full+tutorial`,
       source: "youtube",
     },
     {
-      title: `"${query}" — Lectures on YouTube`,
-      url: `https://www.youtube.com/results?search_query=${encoded}+lecture`,
+      title: `"${query}" — Lecture / Course`,
+      url: `https://www.youtube.com/results?search_query=${encoded}+lecture+course`,
       source: "youtube",
     },
     {
-      title: `"${query}" — Explained on YouTube`,
-      url: `https://www.youtube.com/results?search_query=${encoded}+explained`,
+      title: `"${query}" — Explained Simply`,
+      url: `https://www.youtube.com/results?search_query=${encoded}+explained+simply`,
       source: "youtube",
     },
   ];
