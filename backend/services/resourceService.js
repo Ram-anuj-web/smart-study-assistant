@@ -2,43 +2,30 @@
 
 const axios = require("axios");
 
-// ─── DuckDuckGo Search ──────────────────────────────────────────────
+// ─── Serper Search (replaces DuckDuckGo) ───────────────────────────
 async function fetchDuckDuckGoResults(query) {
   try {
-    const res = await axios.get("https://api.duckduckgo.com/", {
-      params: {
-        q: `${query} study tutorial`,
-        format: "json",
-        no_redirect: 1,
-        no_html: 1,
-      },
-    });
+    const res = await axios.post(
+      "https://google.serper.dev/search",
+      { q: `${query} study tutorial`, num: 5 },
+      {
+        headers: {
+          "X-API-KEY": process.env.SERPER_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-    const results = [];
+    const results = res.data?.organic || [];
 
-    // Main abstract result
-    if (res.data.AbstractURL && res.data.AbstractText) {
-      results.push({
-        title: res.data.Heading,
-        url: res.data.AbstractURL,
-        snippet: res.data.AbstractText,
-        source: "duckduckgo",
-      });
-    }
-
-    // Related topics
-    const related = res.data.RelatedTopics?.slice(0, 4)
-      .filter((t) => t.FirstURL && t.Text)
-      .map((t) => ({
-        title: t.Text?.slice(0, 80),
-        url: t.FirstURL,
-        snippet: t.Text,
-        source: "duckduckgo",
-      })) || [];
-
-    return [...results, ...related];
+    return results.map((r) => ({
+      title: r.title,
+      url: r.link,
+      snippet: r.snippet,
+      source: "duckduckgo",
+    }));
   } catch (err) {
-    console.error("DuckDuckGo error:", err.message);
+    console.error("Serper error:", err.message);
     return [];
   }
 }
