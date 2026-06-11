@@ -4,17 +4,26 @@ import React from "react";
 
 const sourceIcon = {
   wikipedia: "📖",
-  duckduckgo: "🔍",
+  article: "🔍",
   youtube: "🎥",
 };
 
 const sourceLabel = {
   wikipedia: "Wikipedia",
-  duckduckgo: "Article",
+  article: "Article",
   youtube: "YouTube",
 };
 
-const ResourceCard = ({ title, url, snippet, source, thumbnail }) => {
+const ResourceCard = ({
+  title,
+  url,
+  snippet,
+  summary,
+  source,
+  thumbnail,
+}) => {
+  const displayText = snippet || summary || "";
+
   return (
     <a
       href={url}
@@ -38,11 +47,11 @@ const ResourceCard = ({ title, url, snippet, source, thumbnail }) => {
 
       <h4 className="resource-card-title">{title}</h4>
 
-      {snippet && (
+      {displayText && (
         <p className="resource-card-snippet">
-          {snippet.length > 120
-            ? snippet.slice(0, 120) + "..."
-            : snippet}
+          {displayText.length > 120
+            ? displayText.slice(0, 120) + "..."
+            : displayText}
         </p>
       )}
     </a>
