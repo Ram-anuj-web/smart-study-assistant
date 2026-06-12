@@ -73,10 +73,42 @@ export default function App() {
   }
 
   return (
-    <div className="app">
-      <header className="header">
-        <span className="logo-text">AI Smart Assistant</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+    <div className="app-layout">
+      <aside className="sidebar">
+        <div className="sidebar-logo">
+          <div className="logo-icon">🧠</div>
+          <span className="logo-text">AI Smart Assistant</span>
+        </div>
+
+        <nav className="sidebar-nav">
+          <button
+            className={`sidebar-link ${mode === 'notes' ? 'active' : ''}`}
+            onClick={() => setMode('notes')}
+          >
+            📓 My Notes
+          </button>
+          <button
+            className={`sidebar-link ${mode === 'topic' ? 'active' : ''}`}
+            onClick={() => setMode('topic')}
+          >
+            🔍 By Topic
+          </button>
+          <button
+            className={`sidebar-link ${mode === 'progress' ? 'active' : ''}`}
+            onClick={() => setMode('progress')}
+          >
+            📊 Progress
+            {dueCount > 0 && <span className="due-badge">{dueCount}</span>}
+          </button>
+          <button
+            className={`sidebar-link ${mode === 'resources' ? 'active' : ''}`}
+            onClick={() => setMode('resources')}
+          >
+            📚 Resources
+          </button>
+        </nav>
+
+        <div className="sidebar-footer">
           <button
             className="theme-toggle"
             onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
@@ -86,40 +118,9 @@ export default function App() {
           </button>
           <span className="header-badge">v2.0</span>
         </div>
-      </header>
+      </aside>
 
-      <main className="main">
-
-        {/* ── Mode switcher ── */}
-        <div className="tabs">
-          <button
-            className={`tab-btn ${mode === 'notes' ? 'active' : ''}`}
-            onClick={() => setMode('notes')}
-          >
-            📓 My Notes
-          </button>
-          <button
-            className={`tab-btn ${mode === 'topic' ? 'active' : ''}`}
-            onClick={() => setMode('topic')}
-          >
-            🔍 By Topic
-          </button>
-          <button
-            className={`tab-btn ${mode === 'progress' ? 'active' : ''}`}
-            onClick={() => setMode('progress')}
-          >
-            📊 Progress
-            {dueCount > 0 && (
-              <span className="due-badge">{dueCount}</span>
-            )}
-          </button>
-          <button
-            className={`tab-btn ${mode === 'resources' ? 'active' : ''}`}
-            onClick={() => setMode('resources')}
-          >
-            📚 Resources
-          </button>
-        </div>
+      <main className="content-area">
 
         {/* ── NOTES MODE ── */}
         {mode === 'notes' && (
@@ -226,7 +227,7 @@ export default function App() {
           <Resources />
         )}
 
-      <ChatBox context={chatContext} />
+        <ChatBox context={chatContext} />
       </main>
     </div>
   )
