@@ -137,9 +137,8 @@ function getYouTubeSearchLinks(query) {
 async function fetchWikipediaSummary(query) {
   validateQuery(query);
 
-  const primaryQuery = query.split(",")[0].trim();
   const headers = {
-    "User-Agent": "SmartStudyAssistant/1.0 (https://smart-study-assistant-vjt5.onrender.com; https://github.com/Ram-anuj-web)",
+    "User-Agent": "SmartStudyAssistant/1.0 (https://smart-study-assistant-vjt5.onrender.com; contact@example.com)",
   };
 
   try {
@@ -147,11 +146,11 @@ async function fetchWikipediaSummary(query) {
       params: {
         action: "query",
         list: "search",
-        srsearch: primaryQuery,
+        srsearch: query, // ← use full original query, not split
         format: "json",
         srlimit: 1,
       },
-      headers, // ← add this
+      headers,
     });
 
     const topResult = searchRes.data.query.search[0];
@@ -168,10 +167,16 @@ async function fetchWikipediaSummary(query) {
 
     const summaryRes = await axios.get(
       `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
-      { headers } // ← add this too
+      { headers }
     );
 
     const summary = summaryRes.data;
+
+    // Skip disambiguation pages
+    if (summary.type === "disambiguation") {
+      console.log("Skipped: disambiguation page for", title);
+      return null;
+    }
 
     if (isAdultQuery(summary.extract || "")) {
       console.log("Blocked: extract flagged adult");
