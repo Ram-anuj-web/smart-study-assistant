@@ -137,37 +137,46 @@ function getYouTubeSearchLinks(query) {
 async function fetchWikipediaSummary(query) {
   validateQuery(query);
 
-  // Use only the first keyword/phrase for Wikipedia (it doesn't handle comma lists well)
   const primaryQuery = query.split(",")[0].trim();
+  const headers = {
+    "User-Agent": "SmartStudyAssistant/1.0 (https://smart-study-assistant-vjt5.onrender.com; https://github.com/Ram-anuj-web)",
+  };
 
   try {
     const searchRes = await axios.get("https://en.wikipedia.org/w/api.php", {
       params: {
         action: "query",
         list: "search",
-        srsearch: primaryQuery, // ← use cleaned query
+        srsearch: primaryQuery,
         format: "json",
         srlimit: 1,
       },
+      headers, // ← add this
     });
-    // ... rest stays the same
 
     const topResult = searchRes.data.query.search[0];
+    console.log("Wikipedia search result:", topResult);
+
     if (!topResult) return null;
 
     const title = topResult.title;
 
-    // Double-check the Wikipedia title itself isn't adult
-    if (isAdultQuery(title)) return null;
+    if (isAdultQuery(title)) {
+      console.log("Blocked: title flagged adult:", title);
+      return null;
+    }
 
     const summaryRes = await axios.get(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
+      { headers } // ← add this too
     );
 
     const summary = summaryRes.data;
 
-    // Final check: if the extract contains adult content, skip it
-    if (isAdultQuery(summary.extract || "")) return null;
+    if (isAdultQuery(summary.extract || "")) {
+      console.log("Blocked: extract flagged adult");
+      return null;
+    }
 
     return {
       title: summary.title,
@@ -177,8 +186,8 @@ async function fetchWikipediaSummary(query) {
       source: "wikipedia",
     };
   } catch (err) {
-    if (err.message.includes("academic study only")) throw err;
     console.error("Wikipedia API error:", err.message);
+    if (err.message.includes("academic study only")) throw err;
     return null;
   }
 }
