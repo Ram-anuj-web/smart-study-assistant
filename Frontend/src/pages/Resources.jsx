@@ -140,6 +140,49 @@ const Resources = () => {
     </a>
   </div>
 )}
+{/* Articles */}
+      {data?.articles?.length > 0 && (
+        <div className="resources-section">
+          <div className="resources-section-header">
+            <div className="section-icon article">📄</div>
+            <h3>Articles</h3>
+          </div>
+          <div className="resources-grid">
+            {data.articles.map((item, i) => (
+              <ResourceCard key={i} {...item} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Videos */}
+      {data?.videos?.length > 0 && (
+        <div className="resources-section">
+          <div className="resources-section-header">
+            <div className="section-icon youtube">🎥</div>
+            <h3>YouTube</h3>
+          </div>
+          <div className="resources-grid">
+            {data.videos.map((item, i) => (
+              <ResourceCard key={i} {...item} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* No results state */}
+      {data &&
+        !data.wikipedia &&
+        data.articles?.length === 0 &&
+        data.videos?.length === 0 && (
+          <div className="resources-empty">
+            <div className="empty-icon">🔍</div>
+            <h3 style={{ fontFamily: "'Syne', sans-serif", color: "var(--text-h)" }}>
+              No resources found
+            </h3>
+            <p>Try a different topic or check your spelling.</p>
+          </div>
+        )}
 
       {/* Initial empty state (before search) */}
       {!data && !loading && !error && (
