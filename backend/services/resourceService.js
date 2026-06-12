@@ -135,19 +135,22 @@ function getYouTubeSearchLinks(query) {
 
 // ─── Wikipedia Summary ──────────────────────────────────────────────
 async function fetchWikipediaSummary(query) {
-  // Guard: block adult Wikipedia lookups too
   validateQuery(query);
+
+  // Use only the first keyword/phrase for Wikipedia (it doesn't handle comma lists well)
+  const primaryQuery = query.split(",")[0].trim();
 
   try {
     const searchRes = await axios.get("https://en.wikipedia.org/w/api.php", {
       params: {
         action: "query",
         list: "search",
-        srsearch: query,
+        srsearch: primaryQuery, // ← use cleaned query
         format: "json",
         srlimit: 1,
       },
     });
+    // ... rest stays the same
 
     const topResult = searchRes.data.query.search[0];
     if (!topResult) return null;
