@@ -14,15 +14,17 @@ const sourceLabel = {
   youtube: "YouTube",
 };
 
-const ResourceCard = ({
-  title,
-  url,
-  snippet,
-  summary,
-  source,
-  thumbnail,
-}) => {
+const getDomain = (url) => {
+  try {
+    return new URL(url).hostname.replace("www.", "");
+  } catch {
+    return "";
+  }
+};
+
+const ResourceCard = ({ title, url, snippet, summary, source, thumbnail }) => {
   const displayText = snippet || summary || "";
+  const domain = getDomain(url);
 
   return (
     <a
@@ -53,6 +55,17 @@ const ResourceCard = ({
             ? displayText.slice(0, 120) + "..."
             : displayText}
         </p>
+      )}
+
+      {domain && source === "article" && (
+        <div className="resource-card-domain">
+          <img
+            src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+            alt=""
+            onError={(e) => (e.target.style.display = "none")}
+          />
+          {domain}
+        </div>
       )}
     </a>
   );
