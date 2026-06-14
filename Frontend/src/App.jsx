@@ -1,6 +1,7 @@
 import ChatBox from './components/ChatBox'
 import { useState, useEffect } from 'react'
 import './App.css'
+import ExamSimulator from './components/ExamSimulator'
 import NoteInput from './components/NoteInput'
 import TopicInput from './components/TopicInput'
 import TopicParagraph from './components/TopicParagraph'
@@ -116,6 +117,12 @@ export default function App() {
           >
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
+          <button
+  className={`sidebar-link ${mode === 'exam' ? 'active' : ''}`}
+  onClick={() => setMode('exam')}
+>
+  🎯 Exam
+</button>
           <span className="header-badge">v2.0</span>
         </div>
       </aside>
@@ -226,6 +233,10 @@ export default function App() {
         {mode === 'resources' && (
           <Resources />
         )}
+        {/* ── EXAM MODE ── */}
+{mode === 'exam' && (
+  <ExamSimulator userId={userId} />
+)}
 
         <ChatBox context={chatContext} />
       </main>
