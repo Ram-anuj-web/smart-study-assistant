@@ -592,7 +592,109 @@ If the user asks something completely unrelated to both, gently redirect them.
     res.status(500).json({ error: "Chat failed." });
   }
 });
+// ─────────────────────────────────────────────
+// Exam Simulator
+// ─────────────────────────────────────────────
+const ExamResult = require("./models/ExamResult");
 
+app.post("/api/exam/generate", async (req, res) => {
+  const { topic, notes, settings = {}, userId } = req.body;
+
+  const source = notes ? "notes" : "topic";
+  const inputText = notes || topic;
+
+  if (!inputText || inputText.trim().length < 3) {
+    return res.status(400).json({ error: "Topic or notes required." });
+  }
+
+  const {
+    difficulty    = "Medium",
+    questionCount = 10,
+    timeLimit     = 600,   // seconds, default 10 min
+    questionTypes = ["MCQ"],
+    hints         = false,
+  } = settings;
+
+  try {
+    const webContext = source === "topic" ? await fetchWebContext(inputText) : "";
+
+    let weakAreaContext = "";
+    if (userId) {
+      try {
+        const recent = await ExamResult.find({ userId, topic: inputText })
+          .sort({ completedAt: -1 })
+          .limit(3);
+
+        const wrongQuestions = recent.flatMap((r) =>
+          r.responses
+            .filter((resp) => !resp.isCorrect)
+            .map((resp) => r.questions[resp.questionIndex]?.question)
+            .filter(Boolean)
+        );
+
+        if (wrongQuestions.length) {
+          weakAreaContext = `\nUser previously got these wrong — prioritise similar questions:\n${wrongQuestions.slice(0, 5).map((q) => `- ${q}`).join("\n")}\n`;
+        }
+      } catch (e) {
+        console.warn("Could not fetch exam history:", e.message);
+      }
+    }
+
+    const questions = await generateValidatedQuiz(
+      inputText,
+      webContext,
+      { difficulty, questionCount, questionTypes, hints, detailedExplanations: true },
+      weakAreaContext
+    );
+
+    res.json({
+      topic: inputText,
+      source,
+      settings: { difficulty, questionCount, timeLimit, questionTypes, hints },
+      questions,
+    });
+  } catch (err) {
+    console.error("Exam generate error:", err.message);
+    res.status(500).json({ error: err.message || "Failed to generate exam." });
+  }
+});
+
+app.post("/api/exam/save", async (req, res) => {
+  const {
+    userId, topic, source, settings,
+    questions, responses, score,
+    totalCorrect, totalQuestions, timeTakenTotal,
+  } = req.body;
+
+  if (!userId || !topic || !questions || !responses) {
+    return res.status(400).json({ error: "Missing required fields." });
+  }
+
+  try {
+    const result = new ExamResult({
+      userId, topic, source, settings,
+      questions, responses, score,
+      totalCorrect, totalQuestions, timeTakenTotal,
+    });
+    await result.save();
+    res.json({ success: true, resultId: result._id });
+  } catch (err) {
+    console.error("Exam save error:", err.message);
+    res.status(500).json({ error: "Failed to save exam result." });
+  }
+});
+
+app.get("/api/exam/history/:userId", async (req, res) => {
+  try {
+    const results = await ExamResult.find({ userId: req.params.userId })
+      .sort({ completedAt: -1 })
+      .limit(20)
+      .select("topic score totalCorrect totalQuestions timeTakenTotal settings completedAt");
+    res.json({ results });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch exam history." });
+  }
+});
 // ─────────────────────────────────────────────
 // Health Check
 // ─────────────────────────────────────────────
