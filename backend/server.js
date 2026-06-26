@@ -53,10 +53,13 @@ app.use("/api/resources", resourceRoutes);
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: { error: "Too many requests. Please wait a moment." },
+  message: { error: "Too many requests. Please wait a moment." }
 });
 
 app.use("/api/", limiter);
+
+const notesRoutes = require("./routes/notesRoutes");
+app.use("/api/notes", notesRoutes);
 app.use("/api/progress", progressRoutes);
 
 // ─────────────────────────────────────────────
