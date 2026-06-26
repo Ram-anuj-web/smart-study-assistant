@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import ExamSimulator from './components/ExamSimulator'
 import NoteInput from './components/NoteInput'
+import NotesGenerator from "./pages/NotesGenerator";
 import TopicInput from './components/TopicInput'
 import TopicParagraph from './components/TopicParagraph'
 import Summary from './components/Summary'
