@@ -125,10 +125,13 @@ Topic: ${topic}
 Section: "${heading}"
 
 Rules:
-- ${mode === "file" ? "Use ONLY the source text above. If this section is not covered in it, write Not covered in source instead of inventing content." : "Stay consistent with the verified facts above. Do not fabricate statistics, dates, or names."}
-- At least 4 substantive key points - no vague filler.
+- ${mode === "file"
+      ? 'Use ONLY the source text above. If this section is not covered in it, you must STILL return the full JSON structure below - just set keyPoints to ["Not covered in source"], definitions to {}, and example to "". NEVER output plain text instead of JSON, no matter what.'
+      : "Stay consistent with the verified facts above. Do not fabricate statistics, dates, or names."}
+- At least 4 substantive key points - no vague filler (unless not covered in source, see rule above).
 - Include a "definitions" object for any jargon introduced (empty {} if none).
 - Include one short worked example where applicable (empty string if not applicable).
+- Your ENTIRE response must be valid JSON only - no explanations, no plain sentences, nothing outside the JSON object.
 
 Return ONLY this JSON:
 {
@@ -139,10 +142,21 @@ Return ONLY this JSON:
 }
 `;
   const raw = await callGroq(systemPrompt, "Expand section: " + heading, 1000, 0.3);
-  const section = safeParseJSON(raw, "notes-section");
+
+  let section;
+  try {
+    section = safeParseJSON(raw, "notes-section");
+  } catch (err) {
+    if (attempt < 2) {
+      console.warn(`Section "${heading}" returned invalid JSON, retrying...`);
+      return expandSection(topic, heading, mode, groundingContext, attempt + 1);
+    }
+    console.warn(`Section "${heading}" failed twice, using fallback.`);
+    return { heading, keyPoints: ["Not covered in source"], definitions: {}, example: "" };
+  }
 
   if ((!Array.isArray(section.keyPoints) || section.keyPoints.length < 3) && attempt < 2) {
-    console.warn("Section " + heading + " too shallow, retrying...");
+    console.warn(`Section "${heading}" too shallow, retrying...`);
     return expandSection(topic, heading, mode, groundingContext, attempt + 1);
   }
   return section;
