@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { generateNotes, saveNote } from "../api/notes";
 import NoteView from "../components/NoteView";
 import NotesLibrary from "../components/NotesLibrary";
+import "./NotesGenerator.css";
 
 // ⚠️ Placeholder — wire this to whatever you use elsewhere to identify the current user
 //const userId = localStorage.getItem("userId") || "guest";
