@@ -97,20 +97,34 @@ function groundingBlock(mode, groundingContext) {
 }
 
 async function generateOutline(topic, mode, groundingContext) {
-  const systemPrompt = `
+  const systemPrompt = mode === "file"
+    ? `
+You are analyzing a source document to plan study notes.
+
+SOURCE TEXT:
+${groundingContext}
+
+Topic given by user: ${topic}
+
+Identify the actual sections/themes PRESENT in this source text — do not plan sections for the topic's full theoretical scope, only what this specific text actually discusses.
+
+Return ONLY a JSON array of 3-8 section heading strings, based strictly on what's in the source. If the source is short, return fewer headings rather than padding with sections that aren't there.
+`
+    : `
 You are an expert study-notes planner.
 
 ${groundingBlock(mode, groundingContext)}
 
 Topic: ${topic}
 
-Return ONLY a JSON array of 5-8 section heading strings covering the topic real breadth - no filler, no padding.
+Return ONLY a JSON array of 5-8 section heading strings covering the topic's real breadth - no filler, no padding.
 Example: ["Definition & Core Idea", "Key Properties", "..."]
 `;
+
   const raw = await callGroq(systemPrompt, "Plan outline for: " + topic, 400, 0.3);
   const outline = safeParseJSON(raw, "notes-outline");
-  if (!Array.isArray(outline) || outline.length < 3) {
-    throw new Error("Outline generation failed - too few sections.");
+  if (!Array.isArray(outline) || outline.length < 1) {
+    throw new Error("Outline generation failed - no sections found.");
   }
   return outline;
 }
