@@ -108,6 +108,12 @@ export default function App() {
           >
             📚 Resources
           </button>
+          <button
+  className={`sidebar-link ${mode === 'notesgen' ? 'active' : ''}`}
+  onClick={() => setMode('notesgen')}
+>
+  ✨ Notes Generator
+</button>
         </nav>
 
         <div className="sidebar-footer">
@@ -234,6 +240,10 @@ export default function App() {
         {mode === 'resources' && (
           <Resources />
         )}
+        {/* ── NOTES GENERATOR MODE ── */}
+{mode === 'notesgen' && (
+  <NotesGenerator userId={userId} />
+)}
         {/* ── EXAM MODE ── */}
 {mode === 'exam' && (
   <ExamSimulator userId={userId} />

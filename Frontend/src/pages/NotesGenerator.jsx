@@ -6,9 +6,9 @@ import NoteView from "../components/NoteView";
 import NotesLibrary from "../components/NotesLibrary";
 
 // ⚠️ Placeholder — wire this to whatever you use elsewhere to identify the current user
-const userId = localStorage.getItem("userId") || "guest";
+//const userId = localStorage.getItem("userId") || "guest";
 
-const NotesGenerator = () => {
+const NotesGenerator = ({ userId }) => {
   const [view, setView] = useState("generate"); // "generate" | "library"
   const [mode, setMode] = useState("topic"); // "topic" | "file"
   const [subject, setSubject] = useState("");
