@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const pdfParse = require("pdf-parse");
 const Tesseract = require("tesseract.js");
+const sharp = require("sharp");
 const axios = require("axios");
 const Groq = require("groq-sdk");
 const Note = require("../models/Note");
@@ -77,38 +78,61 @@ async function fetchWebContext(topic) {
   }
 }
 
+// ─────────────────────────────────────────────
+// Source extraction — now with image preprocessing + weak-OCR detection
+// ─────────────────────────────────────────────
 async function extractSourceText(file) {
   if (file.mimetype === "application/pdf") {
     const data = await pdfParse(file.buffer);
-    return data.text;
+    return { text: data.text || "", ocrWeak: (data.text || "").trim().length < 20 };
   }
+
   if (file.mimetype.startsWith("image/")) {
-    const result = await Tesseract.recognize(file.buffer, "eng");
-    return result.data.text;
+    // Preprocess: upscale compressed/small images, increase contrast, binarize.
+    // This is what fixes WhatsApp-compressed photos that Tesseract otherwise can't read.
+    const processed = await sharp(file.buffer)
+      .resize({ width: 2000, withoutEnlargement: false })
+      .grayscale()
+      .normalize()
+      .sharpen()
+      .threshold(150)
+      .toBuffer();
+
+    const result = await Tesseract.recognize(processed, "eng", {
+      tessedit_pageseg_mode: 6, // uniform block of text — better for photographed notes than default
+    });
+
+    const text = (result.data.text || "").trim();
+    const alnumRatio = (text.match(/[a-zA-Z0-9]/g) || []).length / Math.max(text.length, 1);
+    const ocrWeak = text.length < 40 || alnumRatio < 0.5 || result.data.confidence < 40;
+
+    return { text, ocrWeak, confidence: result.data.confidence };
   }
+
   throw new Error("Unsupported file type.");
 }
 
+// groundingContext for "file" mode is now ALWAYS a doc+web hybrid block (built in the route).
+// "topic" mode keeps using pure web facts as before.
 function groundingBlock(mode, groundingContext) {
   if (!groundingContext) return "";
   return mode === "file"
-    ? "SOURCE TEXT - use ONLY this, do not add outside facts:\n" + groundingContext
+    ? "SOURCE MATERIAL (document text + supplementary web research) - ground your notes in this:\n" + groundingContext
     : "VERIFIED WEB FACTS - ground your content in these, do not contradict or invent beyond them:\n" + groundingContext;
 }
 
 async function generateOutline(topic, mode, groundingContext) {
   const systemPrompt = mode === "file"
     ? `
-You are analyzing a source document to plan study notes.
+You are planning thorough study notes on a topic, using a combination of document text and web research as source material.
 
-SOURCE TEXT:
-${groundingContext}
+${groundingBlock(mode, groundingContext)}
 
 Topic given by user: ${topic}
 
-Identify the actual sections/themes PRESENT in this source text — do not plan sections for the topic's full theoretical scope, only what this specific text actually discusses.
+Plan sections that fully and properly cover this topic. Use the document material as the primary basis, and the web research to fill in anything the document doesn't cover, so the notes end up complete - not limited to only what fragments survived in the document.
 
-Return ONLY a JSON array of 3-8 section heading strings, based strictly on what's in the source. If the source is short, return fewer headings rather than padding with sections that aren't there.
+Return ONLY a JSON array of 4-8 section heading strings. No padding, but don't under-cover the topic just because the document text alone is thin.
 `
     : `
 You are an expert study-notes planner.
@@ -131,7 +155,7 @@ Example: ["Definition & Core Idea", "Key Properties", "..."]
 
 async function expandSection(topic, heading, mode, groundingContext, attempt = 1) {
   const systemPrompt = `
-You are a study-notes writer expanding ONE section thoroughly and accurately.
+You are a study-notes writer expanding ONE section. Write in clean, confident textbook/notes style - like a knowledgeable teacher, not a fact-checker.
 
 ${groundingBlock(mode, groundingContext)}
 
@@ -139,10 +163,11 @@ Topic: ${topic}
 Section: "${heading}"
 
 Rules:
+- NEVER mention "the source", "the document", "the web", "OCR", or whether something was "covered" or "not covered". No meta-commentary about where information came from, anywhere in the output.
 - ${mode === "file"
-      ? 'Use ONLY the source text above. If this section is not covered in it, you must STILL return the full JSON structure below - just set keyPoints to ["Not covered in source"], definitions to {}, and example to "". NEVER output plain text instead of JSON, no matter what.'
+      ? "Use the document text and web research together as one blended source. Prefer the document where it has relevant detail, and use the web research to fill any gaps so every section is fully and accurately explained. If genuinely nothing is available on this exact sub-point from either source, briefly cover it using accurate general knowledge instead of leaving a gap."
       : "Stay consistent with the verified facts above. Do not fabricate statistics, dates, or names."}
-- At least 4 substantive key points - no vague filler (unless not covered in source, see rule above).
+- At least 4 substantive key points - no vague filler, no hedging language.
 - Include a "definitions" object for any jargon introduced (empty {} if none).
 - Include one short worked example where applicable (empty string if not applicable).
 - Your ENTIRE response must be valid JSON only - no explanations, no plain sentences, nothing outside the JSON object.
@@ -166,7 +191,12 @@ Return ONLY this JSON:
       return expandSection(topic, heading, mode, groundingContext, attempt + 1);
     }
     console.warn(`Section "${heading}" failed twice, using fallback.`);
-    return { heading, keyPoints: ["Not covered in source"], definitions: {}, example: "" };
+    return {
+      heading,
+      keyPoints: [`Key concepts of ${heading} - regenerate this section for full detail.`],
+      definitions: {},
+      example: "",
+    };
   }
 
   if ((!Array.isArray(section.keyPoints) || section.keyPoints.length < 3) && attempt < 2) {
@@ -179,7 +209,7 @@ Return ONLY this JSON:
 async function generateTLDR(topic, sections) {
   const flatPoints = sections.flatMap((s) => s.keyPoints || []).join("\n- ");
   const systemPrompt = `
-Summarize these study notes into a 3-line TL;DR. Be concise - do not add anything beyond what is listed.
+Summarize these study notes into a 3-line TL;DR, in plain confident language. Do not mention sources, gaps, or what was or wasn't covered - just summarize the content as if it's settled, well-known material.
 
 Topic: ${topic}
 Key points covered:
@@ -214,11 +244,30 @@ router.post("/generate", upload.single("file"), async (req, res) => {
     if (mode === "file") {
       if (!req.file) return res.status(400).json({ error: "No file uploaded." });
       sourceType = req.file.mimetype === "application/pdf" ? "pdf" : "image";
-      const sourceText = await extractSourceText(req.file);
-      if (!sourceText || sourceText.trim().length < 20) {
-        return res.status(400).json({ error: "Could not extract enough text from the file." });
+
+      const { text: sourceText, ocrWeak } = await extractSourceText(req.file);
+
+      // Always pull supplementary web facts for file mode, using the subject+topic
+      // the user already typed in — this is what fills the gaps when OCR is weak.
+      const webContext = await fetchWebContext(`${subject} ${topic}`.trim());
+
+      if ((!sourceText || sourceText.trim().length < 20) && !webContext) {
+        return res.status(400).json({
+          error: "Could not extract enough text from the file, and no web information was found for this topic. Try a clearer photo or a more specific topic.",
+        });
       }
-      groundingContext = sourceText.slice(0, 12000);
+
+      const docPart = sourceText && sourceText.trim().length > 0
+        ? "DOCUMENT TEXT (may be partial or imperfectly scanned):\n" + sourceText.slice(0, 8000)
+        : "DOCUMENT TEXT: [none extracted]";
+
+      const webPart = webContext
+        ? "SUPPLEMENTARY WEB RESEARCH (use to fill any gaps in the document):\n" + webContext
+        : "SUPPLEMENTARY WEB RESEARCH: [none found]";
+
+      groundingContext = docPart + "\n\n" + webPart;
+
+      if (ocrWeak) console.log(`Notes: weak OCR for "${topic}", relying more on web grounding`);
     } else {
       groundingContext = await fetchWebContext(topic);
     }
