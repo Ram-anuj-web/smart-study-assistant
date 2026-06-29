@@ -56,11 +56,14 @@ function safeParseJSON(raw, label) {
   }
 }
 
-async function fetchWebContext(topic) {
+// subject is now REQUIRED context for every web search — "deadlock" alone resolves
+// to whatever's trending (a video game); "dbms deadlock" resolves to the right concept.
+async function fetchWebContext(subject, topic) {
+  const query = `${subject} ${topic}`.trim();
   try {
     const response = await axios.post(
       "https://google.serper.dev/search",
-      { q: topic, num: 8 },
+      { q: query, num: 8 },
       { headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" } }
     );
     const results = response.data?.organic || [];
@@ -79,7 +82,7 @@ async function fetchWebContext(topic) {
 }
 
 // ─────────────────────────────────────────────
-// Source extraction — now with image preprocessing + weak-OCR detection
+// Source extraction — image preprocessing + weak-OCR detection
 // ─────────────────────────────────────────────
 async function extractSourceText(file) {
   if (file.mimetype === "application/pdf") {
@@ -88,8 +91,6 @@ async function extractSourceText(file) {
   }
 
   if (file.mimetype.startsWith("image/")) {
-    // Preprocess: upscale compressed/small images, increase contrast, binarize.
-    // This is what fixes WhatsApp-compressed photos that Tesseract otherwise can't read.
     const processed = await sharp(file.buffer)
       .resize({ width: 2000, withoutEnlargement: false })
       .grayscale()
@@ -99,7 +100,7 @@ async function extractSourceText(file) {
       .toBuffer();
 
     const result = await Tesseract.recognize(processed, "eng", {
-      tessedit_pageseg_mode: 6, // uniform block of text — better for photographed notes than default
+      tessedit_pageseg_mode: 6,
     });
 
     const text = (result.data.text || "").trim();
@@ -112,8 +113,6 @@ async function extractSourceText(file) {
   throw new Error("Unsupported file type.");
 }
 
-// groundingContext for "file" mode is now ALWAYS a doc+web hybrid block (built in the route).
-// "topic" mode keeps using pure web facts as before.
 function groundingBlock(mode, groundingContext) {
   if (!groundingContext) return "";
   return mode === "file"
@@ -121,31 +120,38 @@ function groundingBlock(mode, groundingContext) {
     : "VERIFIED WEB FACTS - ground your content in these, do not contradict or invent beyond them:\n" + groundingContext;
 }
 
-async function generateOutline(topic, mode, groundingContext) {
+// Every prompt below now states the subject explicitly, up front, before the topic.
+// This is what stops "deadlock" from being interpreted as the video game when
+// subject is "dbms" — the model is told the domain, not left to infer it.
+function subjectLine(subject, topic) {
+  return `Subject area: ${subject}\nTopic: ${topic}\n(Interpret the topic strictly within this subject area — do not interpret it as anything else, even if that other meaning is more commonly known.)`;
+}
+
+async function generateOutline(subject, topic, mode, groundingContext) {
   const systemPrompt = mode === "file"
     ? `
-You are planning thorough study notes on a topic, using a combination of document text and web research as source material.
+You are planning thorough study notes, using a combination of document text and web research as source material.
+
+${subjectLine(subject, topic)}
 
 ${groundingBlock(mode, groundingContext)}
 
-Topic given by user: ${topic}
-
-Plan sections that fully and properly cover this topic. Use the document material as the primary basis, and the web research to fill in anything the document doesn't cover, so the notes end up complete - not limited to only what fragments survived in the document.
+Plan sections that fully and properly cover this topic, within the stated subject area. Use the document material as the primary basis, and the web research to fill in anything the document doesn't cover, so the notes end up complete - not limited to only what fragments survived in the document.
 
 Return ONLY a JSON array of 4-8 section heading strings. No padding, but don't under-cover the topic just because the document text alone is thin.
 `
     : `
 You are an expert study-notes planner.
 
+${subjectLine(subject, topic)}
+
 ${groundingBlock(mode, groundingContext)}
 
-Topic: ${topic}
-
-Return ONLY a JSON array of 5-8 section heading strings covering the topic's real breadth - no filler, no padding.
+Return ONLY a JSON array of 5-8 section heading strings covering the topic's real breadth within the stated subject area - no filler, no padding.
 Example: ["Definition & Core Idea", "Key Properties", "..."]
 `;
 
-  const raw = await callGroq(systemPrompt, "Plan outline for: " + topic, 400, 0.3);
+  const raw = await callGroq(systemPrompt, "Plan outline for: " + subject + " - " + topic, 400, 0.3);
   const outline = safeParseJSON(raw, "notes-outline");
   if (!Array.isArray(outline) || outline.length < 1) {
     throw new Error("Outline generation failed - no sections found.");
@@ -153,20 +159,22 @@ Example: ["Definition & Core Idea", "Key Properties", "..."]
   return outline;
 }
 
-async function expandSection(topic, heading, mode, groundingContext, attempt = 1) {
+async function expandSection(subject, topic, heading, mode, groundingContext, attempt = 1) {
   const systemPrompt = `
 You are a study-notes writer expanding ONE section. Write in clean, confident textbook/notes style - like a knowledgeable teacher, not a fact-checker.
 
+${subjectLine(subject, topic)}
+
 ${groundingBlock(mode, groundingContext)}
 
-Topic: ${topic}
 Section: "${heading}"
 
 Rules:
+- Interpret "${topic}" strictly as it relates to ${subject}. If web facts above describe an unrelated meaning of this term (e.g. a different industry, product, or game with the same name), IGNORE those facts entirely and rely on your own knowledge of ${subject} instead.
 - NEVER mention "the source", "the document", "the web", "OCR", or whether something was "covered" or "not covered". No meta-commentary about where information came from, anywhere in the output.
 - ${mode === "file"
-      ? "Use the document text and web research together as one blended source. Prefer the document where it has relevant detail, and use the web research to fill any gaps so every section is fully and accurately explained. If genuinely nothing is available on this exact sub-point from either source, briefly cover it using accurate general knowledge instead of leaving a gap."
-      : "Stay consistent with the verified facts above. Do not fabricate statistics, dates, or names."}
+      ? "Use the document text and web research together as one blended source, filtered through the subject area above. Prefer the document where it has relevant detail, and use the web research to fill any gaps so every section is fully and accurately explained. If genuinely nothing is available on this exact sub-point from either source, briefly cover it using accurate general knowledge of the subject instead of leaving a gap."
+      : "Stay consistent with the verified facts above where they actually match the subject area. Do not fabricate statistics, dates, or names."}
 - At least 4 substantive key points - no vague filler, no hedging language.
 - Include a "definitions" object for any jargon introduced (empty {} if none).
 - Include one short worked example where applicable (empty string if not applicable).
@@ -188,7 +196,7 @@ Return ONLY this JSON:
   } catch (err) {
     if (attempt < 2) {
       console.warn(`Section "${heading}" returned invalid JSON, retrying...`);
-      return expandSection(topic, heading, mode, groundingContext, attempt + 1);
+      return expandSection(subject, topic, heading, mode, groundingContext, attempt + 1);
     }
     console.warn(`Section "${heading}" failed twice, using fallback.`);
     return {
@@ -201,17 +209,18 @@ Return ONLY this JSON:
 
   if ((!Array.isArray(section.keyPoints) || section.keyPoints.length < 3) && attempt < 2) {
     console.warn(`Section "${heading}" too shallow, retrying...`);
-    return expandSection(topic, heading, mode, groundingContext, attempt + 1);
+    return expandSection(subject, topic, heading, mode, groundingContext, attempt + 1);
   }
   return section;
 }
 
-async function generateTLDR(topic, sections) {
+async function generateTLDR(subject, topic, sections) {
   const flatPoints = sections.flatMap((s) => s.keyPoints || []).join("\n- ");
   const systemPrompt = `
 Summarize these study notes into a 3-line TL;DR, in plain confident language. Do not mention sources, gaps, or what was or wasn't covered - just summarize the content as if it's settled, well-known material.
 
-Topic: ${topic}
+${subjectLine(subject, topic)}
+
 Key points covered:
 - ${flatPoints}
 
@@ -221,12 +230,12 @@ Return ONLY plain text, 3 short lines. No markdown.
   return raw.trim();
 }
 
-async function generateThoroughNotes({ topic, mode, groundingContext }) {
-  const outline = await generateOutline(topic, mode, groundingContext);
+async function generateThoroughNotes({ subject, topic, mode, groundingContext }) {
+  const outline = await generateOutline(subject, topic, mode, groundingContext);
   const sections = await Promise.all(
-    outline.map((heading) => expandSection(topic, heading, mode, groundingContext))
+    outline.map((heading) => expandSection(subject, topic, heading, mode, groundingContext))
   );
-  const tldr = await generateTLDR(topic, sections);
+  const tldr = await generateTLDR(subject, topic, sections);
   return { title: topic, sections, tldr };
 }
 
@@ -247,9 +256,7 @@ router.post("/generate", upload.single("file"), async (req, res) => {
 
       const { text: sourceText, ocrWeak } = await extractSourceText(req.file);
 
-      // Always pull supplementary web facts for file mode, using the subject+topic
-      // the user already typed in — this is what fills the gaps when OCR is weak.
-      const webContext = await fetchWebContext(`${subject} ${topic}`.trim());
+      const webContext = await fetchWebContext(subject, topic);
 
       if ((!sourceText || sourceText.trim().length < 20) && !webContext) {
         return res.status(400).json({
@@ -269,10 +276,10 @@ router.post("/generate", upload.single("file"), async (req, res) => {
 
       if (ocrWeak) console.log(`Notes: weak OCR for "${topic}", relying more on web grounding`);
     } else {
-      groundingContext = await fetchWebContext(topic);
+      groundingContext = await fetchWebContext(subject, topic);
     }
 
-    const notes = await generateThoroughNotes({ topic, mode, groundingContext });
+    const notes = await generateThoroughNotes({ subject, topic, mode, groundingContext });
     res.json({ subject, topic, sourceType, mode, notes });
   } catch (err) {
     console.error("Notes generate error:", err.message);
